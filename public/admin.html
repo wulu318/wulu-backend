@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WULU SuperAgent - Admin</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--card:#111;--border:#222;--gold:#FFD700;--gold-dim:#B8860B;--text:#e0e0e0;--text-dim:#888;--red:#ef4444;--green:#22c55e;--blue:#3b82f6}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh}
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:48px;width:380px;text-align:center}
+.login-box h1{color:var(--gold);font-size:28px;margin-bottom:8px;letter-spacing:4px}
+.login-box p{color:var(--text-dim);margin-bottom:32px;font-size:14px}
+.login-box input{width:100%;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;margin-bottom:16px;outline:none}
+.login-box input:focus{border-color:var(--gold)}
+.login-box button{width:100%;padding:12px;background:linear-gradient(135deg,var(--gold),var(--gold-dim));color:#000;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:2px}
+.login-box button:hover{opacity:.9}
+.login-box button:disabled{opacity:.5;cursor:not-allowed}
+.app{display:none}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+.topbar .logo{color:var(--gold);font-size:20px;font-weight:800;letter-spacing:3px}
+.topbar .user-info{display:flex;align-items:center;gap:16px;font-size:13px;color:var(--text-dim)}
+.topbar .user-info span.badge{background:var(--gold);color:#000;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700}
+.topbar button{background:none;border:1px solid var(--border);color:var(--text-dim);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px}
+.topbar button:hover{border-color:var(--gold);color:var(--gold)}
+.layout{display:flex;min-height:calc(100vh - 53px)}
+.sidebar{width:200px;background:var(--card);border-right:1px solid var(--border);padding:16px 0}
+.sidebar a{display:block;padding:10px 24px;color:var(--text-dim);text-decoration:none;font-size:13px;cursor:pointer;transition:all .15s}
+.sidebar a:hover,.sidebar a.active{color:var(--gold);background:rgba(255,215,0,.05);border-left:3px solid var(--gold)}
+.main{flex:1;padding:24px;overflow-y:auto}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+.card h2{font-size:18px;color:var(--gold);margin-bottom:16px;letter-spacing:1px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center}
+.stat-card .num{font-size:32px;font-weight:800;color:var(--gold);line-height:1}
+.stat-card .label{font-size:12px;color:var(--text-dim);margin-top:6px;text-transform:uppercase;letter-spacing:1px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text-dim);font-size:11px;text-transform:uppercase;letter-spacing:1px}
+td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.03)}
+tr:hover td{background:rgba(255,215,0,.02)}
+.badge-green{color:var(--green);font-weight:600}
+.badge-red{color:var(--red);font-weight:600}
+.badge-blue{color:var(--blue);font-weight:600}
+.btn-sm{padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-right:4px}
+.btn-sm:hover{border-color:var(--gold);color:var(--gold)}
+.btn-danger{border-color:var(--red);color:var(--red)}
+.btn-danger:hover{background:var(--red);color:#fff}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:999;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:28px;width:440px;max-height:80vh;overflow-y:auto}
+.modal h3{color:var(--gold);margin-bottom:16px;font-size:16px}
+.modal label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:4px;margin-top:12px}
+.modal input,.modal select,.modal textarea{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none}
+.modal input:focus,.modal select:focus,.modal textarea:focus{border-color:var(--gold)}
+.modal textarea{min-height:80px;resize:vertical;font-family:monospace}
+.modal .btn-row{display:flex;gap:8px;margin-top:20px;justify-content:flex-end}
+.modal .btn-row button{padding:8px 20px;border-radius:6px;font-size:13px;cursor:pointer;border:none}
+.modal .btn-cancel{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.modal .btn-save{background:linear-gradient(135deg,var(--gold),var(--gold-dim));color:#000;font-weight:700}
+.empty-state{text-align:center;padding:48px;color:var(--text-dim);font-size:14px}
+.toast{position:fixed;top:20px;right:20px;z-index:9999;padding:12px 20px;border-radius:8px;font-size:13px;animation:slideIn .3s}
+.toast-success{background:var(--green);color:#000}
+.toast-error{background:var(--red);color:#fff}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-wrap" id="loginView">
+  <div class="login-box">
+    <h1>WULU</h1>
+    <p>SuperAgent Admin Console</p>
+    <input type="email" id="loginEmail" placeholder="admin@wulu-superagent.com" value="admin@wulu-superagent.com">
+    <input type="password" id="loginPass" placeholder="Password" value="">
+    <button id="loginBtn" onclick="doLogin()">LOGIN</button>
+    <p style="margin-top:16px;font-size:11px;color:var(--text-dim)">WULU SuperAgent v1.0</p>
+  </div>
+</div>
+
+<!-- App -->
+<div class="app" id="appView">
+  <div class="topbar">
+    <div class="logo">WULU ADMIN</div>
+    <div class="user-info">
+      <span id="adminEmail"></span>
+      <span class="badge">SUPERADMIN</span>
+      <button onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <a class="active" onclick="switchTab('dashboard')">Dashboard</a>
+      <a onclick="switchTab('users')">Users</a>
+      <a onclick="switchTab('plans')">Plans</a>
+      <a onclick="switchTab('subscriptions')">Subscriptions</a>
+      <a onclick="switchTab('system')">System</a>
+    </div>
+    <div class="main" id="mainContent"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+const API = '/api';
+let TOKEN = localStorage.getItem('wulu_admin_token') || '';
+let currentTab = 'dashboard';
+
+// ── Auth ──
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const pass = document.getElementById('loginPass').value;
+  document.getElementById('loginBtn').disabled = true;
+  try {
+    const r = await api('POST', '/auth/login', { email, password: pass });
+    if (r.token && r.user && r.user.role === 'superadmin') {
+      TOKEN = r.token;
+      localStorage.setItem('wulu_admin_token', TOKEN);
+      showApp(r.user);
+    } else {
+      toast('Access denied: superadmin only', 'error');
+    }
+  } catch(e) {
+    toast(e.message || 'Login failed', 'error');
+  }
+  document.getElementById('loginBtn').disabled = false;
+}
+
+function doLogout() {
+  TOKEN = '';
+  localStorage.removeItem('wulu_admin_token');
+  document.getElementById('loginView').style.display = 'flex';
+  document.getElementById('appView').style.display = 'none';
+}
+
+async function checkAuth() {
+  if (!TOKEN) return;
+  try {
+    const r = await api('GET', '/auth/me');
+    if (r.role === 'superadmin') showApp(r);
+    else doLogout();
+  } catch { doLogout(); }
+}
+
+// ── API helper ──
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (TOKEN) opts.headers['Authorization'] = 'Bearer ' + TOKEN;
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// ── UI ──
+function showApp(user) {
+  document.getElementById('loginView').style.display = 'none';
+  document.getElementById('appView').style.display = 'block';
+  document.getElementById('adminEmail').textContent = user.email;
+  switchTab('dashboard');
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.sidebar a').forEach((a,i) => {
+    a.classList.toggle('active', ['dashboard','users','plans','subscriptions','system'][i] === tab);
+  });
+  const loaders = { dashboard: loadDashboard, users: loadUsers, plans: loadPlans, subscriptions: loadSubs, system: loadSystem };
+  if (loaders[tab]) loaders[tab]();
+}
+
+function toast(msg, type='success') {
+  const d = document.createElement('div');
+  d.className = 'toast toast-' + type;
+  d.textContent = msg;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 3000);
+}
+
+function openModal(html) { document.getElementById('modalContent').innerHTML = html; document.getElementById('modalOverlay').classList.add('show'); }
+function closeModal() { document.getElementById('modalOverlay').classList.remove('show'); }
+
+function fmtDate(ts) { if (!ts) return '-'; const d = new Date(typeof ts==='number'?ts*1000:ts); return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}); }
+function fmtQuota(q) { return q >= 1e9 ? (q/1e9).toFixed(1)+'B' : q >= 1e6 ? (q/1e6).toFixed(1)+'M' : q >= 1e3 ? (q/1e3).toFixed(1)+'K' : String(q); }
+
+// ── Dashboard ──
+async function loadDashboard() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const stats = await api('GET', '/admin/stats');
+    main.innerHTML = `
+      <div class="stats">
+        <div class="stat-card"><div class="num">${stats.totalUsers||0}</div><div class="label">Total Users</div></div>
+        <div class="stat-card"><div class="num">${stats.activeUsers||0}</div><div class="label">Active Users</div></div>
+        <div class="stat-card"><div class="num">${stats.totalSubscriptions||0}</div><div class="label">Subscriptions</div></div>
+        <div class="stat-card"><div class="num">${fmtQuota(stats.totalQuotaUsed||0)}</div><div class="label">Quota Used</div></div>
+      </div>
+      <div class="card">
+        <h2>System Overview</h2>
+        <table>
+          <tr><td style="color:var(--text-dim)">Backend Version</td><td>1.0.0</td></tr>
+          <tr><td style="color:var(--text-dim)">API Base</td><td>${location.origin}/api</td></tr>
+          <tr><td style="color:var(--text-dim)">Admin Email</td><td>${document.getElementById('adminEmail').textContent}</td></tr>
+          <tr><td style="color:var(--text-dim)">Health</td><td><span class="badge-green">ONLINE</span></td></tr>
+        </table>
+      </div>`;
+  } catch(e) {
+    main.innerHTML = `<div class="empty-state">Failed to load: ${e.message}</div>`;
+  }
+}
+
+// ── Users ──
+async function loadUsers() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const users = await api('GET', '/admin/users');
+    if (!users.length) { main.innerHTML = '<div class="card"><h2>Users</h2><div class="empty-state">No users yet</div></div>'; return; }
+    let rows = users.map(u => `<tr>
+      <td>${u.email}</td>
+      <td>${u.displayName||'-'}</td>
+      <td><span class="badge-${u.role==='superadmin'?'blue':u.role==='admin'?'gold':'green'}">${u.role}</span></td>
+      <td>${u.quotaRemaining!=null?fmtQuota(u.quotaRemaining):'-'}</td>
+      <td>${u.planName||'Free'}</td>
+      <td><button class="btn-sm" onclick="editUser('${u.id}')">Edit</button>
+      ${u.role!=='superadmin'?`<button class="btn-sm btn-danger" onclick="deleteUser('${u.id}','${u.email}')">Del</button>`:''}</td>
+    </tr>`).join('');
+    main.innerHTML = `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="margin:0">Users (${users.length})</h2>
+        <button class="btn-sm" style="padding:8px 16px" onclick="editUser('new')">+ Add User</button>
+      </div>
+      <table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Quota</th><th>Plan</th><th>Actions</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+    </div>`;
+  } catch(e) { main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+}
+
+async function editUser(id) {
+  let u = {};
+  if (id !== 'new') {
+    try { u = await api('GET', '/admin/users/' + id); } catch { u = {}; }
+  }
+  openModal(`
+    <h3>${id==='new'?'Add User':'Edit User'}</h3>
+    <label>Email</label><input id="muEmail" value="${u.email||''}">
+    <label>Display Name</label><input id="muName" value="${u.displayName||''}">
+    <label>Role</label><select id="muRole"><option value="user" ${u.role==='user'?'selected':''}>user</option><option value="admin" ${u.role==='admin'?'selected':''}>admin</option><option value="superadmin" ${u.role==='superadmin'?'selected':''}>superadmin</option></select>
+    ${id==='new'?'<label>Password</label><input id="muPass" type="password" placeholder="Min 6 chars">':''}
+    <label>Quota Remaining</label><input id="muQuota" type="number" value="${u.quotaRemaining||0}">
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveUser('${id}')">Save</button></div>
+  `);
+}
+
+async function saveUser(id) {
+  const body = {
+    email: document.getElementById('muEmail').value,
+    displayName: document.getElementById('muName').value,
+    role: document.getElementById('muRole').value,
+    quotaRemaining: parseInt(document.getElementById('muQuota').value)||0
+  };
+  const passEl = document.getElementById('muPass');
+  if (passEl && passEl.value) body.password = passEl.value;
+  try {
+    if (id === 'new') await api('POST', '/admin/users', body);
+    else await api('PUT', '/admin/users/' + id, body);
+    toast('User saved');
+    closeModal();
+    loadUsers();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function deleteUser(id, email) {
+  if (!confirm('Delete user ' + email + '?')) return;
+  try { await api('DELETE', '/admin/users/' + id); toast('User deleted'); loadUsers(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Plans ──
+async function loadPlans() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const plans = await api('GET', '/plans');
+    if (!plans.length) { main.innerHTML = '<div class="card"><h2>Plans</h2><div class="empty-state">No plans</div></div>'; return; }
+    let rows = plans.map(p => `<tr>
+      <td style="color:var(--gold);font-weight:700">${p.name}</td>
+      <td>${p.price_monthly===0?'Free':'$'+p.price_monthly+'/mo'}</td>
+      <td>${fmtQuota(p.quota_monthly||0)}</td>
+      <td>${p.is_active?'<span class="badge-green">Active</span>':'<span class="badge-red">Inactive</span>'}</td>
+      <td><button class="btn-sm" onclick="editPlan('${p.id}')">Edit</button></td>
+    </tr>`).join('');
+    main.innerHTML = `<div class="card"><h2>Plans (${plans.length})</h2>
+      <table><thead><tr><th>Name</th><th>Price</th><th>Quota/Mo</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  } catch(e) { main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+}
+
+async function editPlan(id) {
+  let p = {};
+  try { p = await api('GET', '/plans/' + id); } catch {}
+  openModal(`
+    <h3>Edit Plan: ${p.name||''}</h3>
+    <label>Name</label><input id="mpName" value="${p.name||''}">
+    <label>Monthly Price</label><input id="mpPrice" type="number" value="${p.price_monthly||0}">
+    <label>Monthly Quota</label><input id="mpQuota" type="number" value="${p.quota_monthly||0}">
+    <label>Active</label><select id="mpActive"><option value="1" ${p.is_active?'selected':''}>Yes</option><option value="0" ${!p.is_active?'selected':''}>No</option></select>
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="savePlan('${id}')">Save</button></div>
+  `);
+}
+
+async function savePlan(id) {
+  try {
+    await api('PUT', '/admin/plans/' + id, {
+      name: document.getElementById('mpName').value,
+      price_monthly: parseFloat(document.getElementById('mpPrice').value)||0,
+      quota_monthly: parseInt(document.getElementById('mpQuota').value)||0,
+      is_active: document.getElementById('mpActive').value === '1'
+    });
+    toast('Plan updated'); closeModal(); loadPlans();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Subscriptions ──
+async function loadSubs() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const subs = await api('GET', '/admin/subscriptions');
+    if (!subs || !subs.length) { main.innerHTML = '<div class="card"><h2>Subscriptions</h2><div class="empty-state">No subscriptions</div></div>'; return; }
+    let rows = subs.map(s => `<tr>
+      <td>${s.userEmail||s.userId||'-'}</td>
+      <td style="color:var(--gold)">${s.planName||'-'}</td>
+      <td>${s.active?'<span class="badge-green">Active</span>':'<span class="badge-red">Inactive</span>'}</td>
+      <td>${fmtDate(s.expiresAt)}</td>
+    </tr>`).join('');
+    main.innerHTML = `<div class="card"><h2>Subscriptions (${subs.length})</h2>
+      <table><thead><tr><th>User</th><th>Plan</th><th>Status</th><th>Expires</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  } catch(e) { main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+}
+
+// ── System ──
+async function loadSystem() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = `<div class="card"><h2>System Actions</h2>
+    <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">Administrative operations for the WULU Backend.</p>
+    <button class="btn-sm" style="padding:8px 16px;margin-right:8px" onclick="healthCheck()">Health Check</button>
+    <button class="btn-sm btn-danger" style="padding:8px 16px" onclick="restartBackend()">Restart Backend (PM2)</button>
+  </div>
+  <div class="card" id="sysLog"><h2>Recent Logs</h2><div class="empty-state">Click Health Check to test</div></div>`;
+}
+
+async function healthCheck() {
+  try {
+    const r = await api('GET', '/health');
+    document.getElementById('sysLog').innerHTML = `<h2>Health Check</h2>
+      <table><tr><td style="color:var(--text-dim)">Status</td><td class="badge-green">${r.status}</td></tr>
+      <tr><td style="color:var(--text-dim)">Version</td><td>${r.version}</td></tr>
+      <tr><td style="color:var(--text-dim)">Timestamp</td><td>${new Date(r.timestamp).toLocaleString()}</td></tr></table>`;
+    toast('Health: OK');
+  } catch(e) { toast('Health check failed: ' + e.message, 'error'); }
+}
+
+function restartBackend() {
+  if (!confirm('Restart the WULU Backend via PM2? This will cause a brief downtime.')) return;
+  toast('Use SSH: pm2 restart wulu-backend');
+}
+
+// ── Init ──
+checkAuth();
+</script>
+</body>
+</html>
