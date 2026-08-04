@@ -36,6 +36,15 @@ app.use(rateLimit({
   message: { error: 'Too many requests, please try again later.' },
 }));
 
+// Auth-specific rate limit: 5 req/min per IP (brute-force protection)
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again later.' },
+});
+
 // ─── Admin Dashboard ──────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
@@ -45,7 +54,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ─── API Routes ──────────────────────────────────────────────────
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/v1', modelProxyRoutes);   // /api/v1/chat/completions etc.
