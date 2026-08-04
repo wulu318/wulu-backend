@@ -19,13 +19,15 @@ const adminRoutes = require('./routes/admin');
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
-app.use(helmet());
+// ─── Security Middleware ───────────────────────────────────────────
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
   origin: process.env.CORS_ORIGIN || 'https://ai.005656.xyz',
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
 
+// Global rate limit: 100 req/min per IP
 app.use(rateLimit({
   windowMs: 60 * 1000,
   max: 100,
@@ -34,23 +36,30 @@ app.use(rateLimit({
   message: { error: 'Too many requests, please try again later.' },
 }));
 
+// ─── Admin Dashboard ──────────────────────────────────────────────
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// ─── Health Check ────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', version: '1.0.0', timestamp: Date.now() });
 });
 
+// ─── API Routes ──────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/plans', planRoutes);
-app.use('/api/v1', modelProxyRoutes);
+app.use('/api/v1', modelProxyRoutes);   // /api/v1/chat/completions etc.
 app.use('/api/memory', memoryRoutes);
 app.use('/api/admin', adminRoutes);
 
+// ─── Error Handler ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
   console.error('[ERROR]', err.message || err);
   const status = err.status || 500;
   res.status(status).json({ error: err.message || 'Internal server error' });
 });
 
+// ─── Bootstrap ──────────────────────────────────────────────────
 async function main() {
   const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '..', 'data', 'wulu.db');
   await initDb(dbPath);
