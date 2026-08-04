@@ -13,6 +13,7 @@ function getDb() {
 }
 
 async function initDb(dbPath) {
+  // Ensure directory exists
   const dir = path.dirname(dbPath);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
@@ -20,6 +21,7 @@ async function initDb(dbPath) {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
+  // ─── Users ─────────────────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
@@ -38,6 +40,7 @@ async function initDb(dbPath) {
     is_active INTEGER DEFAULT 1
   )`);
 
+  // ─── Plans ─────────────────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS plans (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -53,6 +56,7 @@ async function initDb(dbPath) {
     created_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Subscriptions ─────────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS subscriptions (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id),
@@ -64,6 +68,7 @@ async function initDb(dbPath) {
     created_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Usage Logs ────────────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS usage_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL REFERENCES users(id),
@@ -77,6 +82,7 @@ async function initDb(dbPath) {
     created_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Memory Entries ────────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS memory_entries (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id),
@@ -88,6 +94,7 @@ async function initDb(dbPath) {
     metadata TEXT DEFAULT '{}'
   )`);
 
+  // ─── Diary Entries ─────────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS diary_entries (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id),
@@ -100,6 +107,7 @@ async function initDb(dbPath) {
     updated_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Future Messages ───────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS future_messages (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id),
@@ -110,12 +118,14 @@ async function initDb(dbPath) {
     created_at INTEGER DEFAULT 0
   )`);
 
+  // ─── System Config ─────────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS system_config (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Indexes ───────────────────────────────────────────────────
   db.exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_logs(user_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_created ON usage_logs(created_at)`);
@@ -123,6 +133,7 @@ async function initDb(dbPath) {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, date)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_future_user ON future_messages(user_id, is_delivered)`);
 
+  // ─── Seed admin user ───────────────────────────────────────────
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@wulu-superagent.com';
   const adminPass = process.env.ADMIN_PASSWORD || 'changeme';
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
@@ -134,6 +145,7 @@ async function initDb(dbPath) {
     console.log(`[DB] Seeded admin user: ${adminEmail}`);
   }
 
+  // ─── Seed default plans ─────────────────────────────────────────
   const planCount = db.prepare('SELECT COUNT(*) as c FROM plans').get().c;
   if (planCount === 0) {
     const { v4: uuidv4 } = require('uuid');
