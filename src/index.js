@@ -15,6 +15,7 @@ const planRoutes = require('./routes/plan');
 const modelProxyRoutes = require('./routes/model-proxy');
 const memoryRoutes = require('./routes/memory');
 const adminRoutes = require('./routes/admin');
+const updateRoutes = require('./routes/update');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -46,6 +47,7 @@ const authLimiter = rateLimit({
 });
 
 // ─── Admin Dashboard ──────────────────────────────────────────────
+// SPA routing: serve index.html for hash-based routes under public
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ─── Health Check ────────────────────────────────────────────────
@@ -60,6 +62,7 @@ app.use('/api/plans', planRoutes);
 app.use('/api/v1', modelProxyRoutes);   // /api/v1/chat/completions etc.
 app.use('/api/memory', memoryRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/update', updateRoutes);
 
 // ─── Error Handler ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
