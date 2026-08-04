@@ -42,6 +42,7 @@ tr:hover td{background:rgba(255,215,0,.02)}
 .badge-green{color:var(--green);font-weight:600}
 .badge-red{color:var(--red);font-weight:600}
 .badge-blue{color:var(--blue);font-weight:600}
+.badge-gold{color:var(--gold);font-weight:600}
 .btn-sm{padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--bg);color:var(--text);margin-right:4px}
 .btn-sm:hover{border-color:var(--gold);color:var(--gold)}
 .btn-danger{border-color:var(--red);color:var(--red)}
@@ -63,6 +64,10 @@ tr:hover td{background:rgba(255,215,0,.02)}
 .toast-success{background:var(--green);color:#000}
 .toast-error{background:var(--red);color:#fff}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+.config-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.config-grid label{font-size:12px;color:var(--text-dim);margin-bottom:4px;display:block}
+.config-grid input{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;outline:none}
+.config-grid input:focus{border-color:var(--gold)}
 </style>
 </head>
 <body>
@@ -86,6 +91,7 @@ tr:hover td{background:rgba(255,215,0,.02)}
     <div class="user-info">
       <span id="adminEmail"></span>
       <span class="badge">SUPERADMIN</span>
+      <button onclick="showChangePassword()">Change Password</button>
       <button onclick="doLogout()">Logout</button>
     </div>
   </div>
@@ -147,6 +153,31 @@ async function checkAuth() {
   } catch { doLogout(); }
 }
 
+// ── Change Password ──
+function showChangePassword() {
+  openModal(`
+    <h3>Change Password</h3>
+    <label>Current Password</label><input id="cpCurrent" type="password" placeholder="Enter current password">
+    <label>New Password</label><input id="cpNew" type="password" placeholder="Min 6 characters">
+    <label>Confirm New Password</label><input id="cpConfirm" type="password" placeholder="Re-enter new password">
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="doChangePassword()">Update</button></div>
+  `);
+}
+
+async function doChangePassword() {
+  const current = document.getElementById('cpCurrent').value;
+  const newPwd = document.getElementById('cpNew').value;
+  const confirm = document.getElementById('cpConfirm').value;
+  if (!current || !newPwd) return toast('All fields required', 'error');
+  if (newPwd !== confirm) return toast('Passwords do not match', 'error');
+  if (newPwd.length < 6) return toast('New password must be at least 6 characters', 'error');
+  try {
+    await api('PUT', '/auth/change-password', { currentPassword: current, newPassword: newPwd });
+    toast('Password changed successfully');
+    closeModal();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
 // ── API helper ──
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
@@ -200,7 +231,8 @@ async function loadDashboard() {
         <div class="stat-card"><div class="num">${stats.totalUsers||0}</div><div class="label">Total Users</div></div>
         <div class="stat-card"><div class="num">${stats.activeUsers||0}</div><div class="label">Active Users</div></div>
         <div class="stat-card"><div class="num">${stats.totalSubscriptions||0}</div><div class="label">Subscriptions</div></div>
-        <div class="stat-card"><div class="num">${fmtQuota(stats.totalQuotaUsed||0)}</div><div class="label">Quota Used</div></div>
+        <div class="stat-card"><div class="num">${fmtQuota(stats.totalTokens||0)}</div><div class="label">Total Tokens</div></div>
+        <div class="stat-card"><div class="num">${fmtQuota(stats.totalRequests||0)}</div><div class="label">Total Requests</div></div>
       </div>
       <div class="card">
         <h2>System Overview</h2>
@@ -221,23 +253,24 @@ async function loadUsers() {
   const main = document.getElementById('mainContent');
   main.innerHTML = '<div class="empty-state">Loading...</div>';
   try {
-    const users = await api('GET', '/admin/users');
-    if (!users.length) { main.innerHTML = '<div class="card"><h2>Users</h2><div class="empty-state">No users yet</div></div>'; return; }
+    const data = await api('GET', '/admin/users?limit=100');
+    const users = data.users || data;
+    if (!users || !users.length) { main.innerHTML = '<div class="card"><h2>Users</h2><div class="empty-state">No users yet</div></div>'; return; }
     let rows = users.map(u => `<tr>
-      <td>${u.email}</td>
-      <td>${u.displayName||'-'}</td>
+      <td>${u.email||''}</td>
+      <td>${u.display_name||u.displayName||'-'}</td>
       <td><span class="badge-${u.role==='superadmin'?'blue':u.role==='admin'?'gold':'green'}">${u.role}</span></td>
-      <td>${u.quotaRemaining!=null?fmtQuota(u.quotaRemaining):'-'}</td>
-      <td>${u.planName||'Free'}</td>
+      <td>${u.quota_remaining!=null?fmtQuota(u.quota_remaining):u.quotaRemaining!=null?fmtQuota(u.quotaRemaining):'-'}</td>
+      <td>${u.is_active!==undefined?(u.is_active?'<span class="badge-green">Active</span>':'<span class="badge-red">Inactive</span>'):'-'}</td>
       <td><button class="btn-sm" onclick="editUser('${u.id}')">Edit</button>
       ${u.role!=='superadmin'?`<button class="btn-sm btn-danger" onclick="deleteUser('${u.id}','${u.email}')">Del</button>`:''}</td>
     </tr>`).join('');
     main.innerHTML = `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="margin:0">Users (${users.length})</h2>
+        <h2 style="margin:0">Users (${data.total || users.length})</h2>
         <button class="btn-sm" style="padding:8px 16px" onclick="editUser('new')">+ Add User</button>
       </div>
-      <table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Quota</th><th>Plan</th><th>Actions</th></tr></thead>
+      <table><thead><tr><th>Email</th><th>Name</th><th>Role</th><th>Quota</th><th>Status</th><th>Actions</th></tr></thead>
       <tbody>${rows}</tbody></table>
     </div>`;
   } catch(e) { main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
@@ -251,23 +284,26 @@ async function editUser(id) {
   openModal(`
     <h3>${id==='new'?'Add User':'Edit User'}</h3>
     <label>Email</label><input id="muEmail" value="${u.email||''}">
-    <label>Display Name</label><input id="muName" value="${u.displayName||''}">
+    <label>Display Name</label><input id="muName" value="${u.displayName||u.display_name||''}">
     <label>Role</label><select id="muRole"><option value="user" ${u.role==='user'?'selected':''}>user</option><option value="admin" ${u.role==='admin'?'selected':''}>admin</option><option value="superadmin" ${u.role==='superadmin'?'selected':''}>superadmin</option></select>
     ${id==='new'?'<label>Password</label><input id="muPass" type="password" placeholder="Min 6 chars">':''}
-    <label>Quota Remaining</label><input id="muQuota" type="number" value="${u.quotaRemaining||0}">
+    <label>Quota</label><input id="muQuota" type="number" value="${u.quotaRemaining||u.quota_remaining||0}">
+    <label>Active</label><select id="muActive"><option value="1" ${(u.isActive!==false && u.is_active!==0)?'selected':''}>Yes</option><option value="0" ${(u.isActive===false || u.is_active===0)?'selected':''}>No</option></select>
     <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveUser('${id}')">Save</button></div>
   `);
 }
 
 async function saveUser(id) {
   const body = {
-    email: document.getElementById('muEmail').value,
-    displayName: document.getElementById('muName').value,
     role: document.getElementById('muRole').value,
-    quotaRemaining: parseInt(document.getElementById('muQuota').value)||0
+    quotaRemaining: parseInt(document.getElementById('muQuota').value)||0,
+    isActive: document.getElementById('muActive').value === '1'
   };
-  const passEl = document.getElementById('muPass');
-  if (passEl && passEl.value) body.password = passEl.value;
+  if (id === 'new') {
+    body.email = document.getElementById('muEmail').value;
+    body.password = document.getElementById('muPass').value;
+    body.displayName = document.getElementById('muName').value;
+  }
   try {
     if (id === 'new') await api('POST', '/admin/users', body);
     else await api('PUT', '/admin/users/' + id, body);
@@ -309,20 +345,31 @@ async function editPlan(id) {
   openModal(`
     <h3>Edit Plan: ${p.name||''}</h3>
     <label>Name</label><input id="mpName" value="${p.name||''}">
-    <label>Monthly Price</label><input id="mpPrice" type="number" value="${p.price_monthly||0}">
+    <label>Monthly Price</label><input id="mpPrice" type="number" step="0.01" value="${p.price_monthly||0}">
+    <label>Yearly Price</label><input id="mpPriceY" type="number" step="0.01" value="${p.price_yearly||0}">
     <label>Monthly Quota</label><input id="mpQuota" type="number" value="${p.quota_monthly||0}">
+    <label>Max Context Tokens</label><input id="mpCtx" type="number" value="${p.max_context_tokens||4096}">
+    <label>Features (JSON)</label><textarea id="mpFeatures">${p.features||'{}'}</textarea>
+    <label>Model Access (JSON)</label><textarea id="mpModels">${p.model_access||'[]'}</textarea>
     <label>Active</label><select id="mpActive"><option value="1" ${p.is_active?'selected':''}>Yes</option><option value="0" ${!p.is_active?'selected':''}>No</option></select>
     <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="savePlan('${id}')">Save</button></div>
   `);
 }
 
 async function savePlan(id) {
+  let features, modelAccess;
+  try { features = JSON.parse(document.getElementById('mpFeatures').value); } catch { features = {}; }
+  try { modelAccess = JSON.parse(document.getElementById('mpModels').value); } catch { modelAccess = []; }
   try {
     await api('PUT', '/admin/plans/' + id, {
       name: document.getElementById('mpName').value,
-      price_monthly: parseFloat(document.getElementById('mpPrice').value)||0,
-      quota_monthly: parseInt(document.getElementById('mpQuota').value)||0,
-      is_active: document.getElementById('mpActive').value === '1'
+      priceMonthly: parseFloat(document.getElementById('mpPrice').value)||0,
+      priceYearly: parseFloat(document.getElementById('mpPriceY').value)||0,
+      quotaMonthly: parseInt(document.getElementById('mpQuota').value)||0,
+      maxContextTokens: parseInt(document.getElementById('mpCtx').value)||4096,
+      features,
+      modelAccess,
+      isActive: document.getElementById('mpActive').value === '1'
     });
     toast('Plan updated'); closeModal(); loadPlans();
   } catch(e) { toast(e.message, 'error'); }
@@ -333,29 +380,86 @@ async function loadSubs() {
   const main = document.getElementById('mainContent');
   main.innerHTML = '<div class="empty-state">Loading...</div>';
   try {
-    const subs = await api('GET', '/admin/subscriptions');
-    if (!subs || !subs.length) { main.innerHTML = '<div class="card"><h2>Subscriptions</h2><div class="empty-state">No subscriptions</div></div>'; return; }
+    const data = await api('GET', '/admin/subscriptions?limit=100');
+    const subs = data.subscriptions || data || [];
+    if (!subs.length) { main.innerHTML = '<div class="card"><h2>Subscriptions</h2><div class="empty-state">No subscriptions</div></div>'; return; }
     let rows = subs.map(s => `<tr>
-      <td>${s.userEmail||s.userId||'-'}</td>
-      <td style="color:var(--gold)">${s.planName||'-'}</td>
-      <td>${s.active?'<span class="badge-green">Active</span>':'<span class="badge-red">Inactive</span>'}</td>
-      <td>${fmtDate(s.expiresAt)}</td>
+      <td>${s.userEmail||s.user_email||'-'}</td>
+      <td style="color:var(--gold)">${s.planName||s.plan_name||'-'}</td>
+      <td>${s.status==='active'?'<span class="badge-green">Active</span>':s.status==='expired'?'<span class="badge-red">Expired</span>':'<span class="badge-red">'+s.status+'</span>'}</td>
+      <td>${fmtDate(s.expires_at||s.expiresAt)}</td>
+      <td><button class="btn-sm" onclick="editSub('${s.id}','${s.status}')">Edit</button></td>
     </tr>`).join('');
-    main.innerHTML = `<div class="card"><h2>Subscriptions (${subs.length})</h2>
-      <table><thead><tr><th>User</th><th>Plan</th><th>Status</th><th>Expires</th></tr></thead>
+    main.innerHTML = `<div class="card"><h2>Subscriptions (${data.total || subs.length})</h2>
+      <table><thead><tr><th>User</th><th>Plan</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
   } catch(e) { main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`; }
+}
+
+async function editSub(id, currentStatus) {
+  openModal(`
+    <h3>Edit Subscription</h3>
+    <label>Status</label><select id="msStatus">
+      <option value="active" ${currentStatus==='active'?'selected':''}>Active</option>
+      <option value="past_due" ${currentStatus==='past_due'?'selected':''}>Past Due</option>
+      <option value="canceled" ${currentStatus==='canceled'?'selected':''}>Canceled</option>
+      <option value="expired" ${currentStatus==='expired'?'selected':''}>Expired</option>
+    </select>
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveSub('${id}')">Save</button></div>
+  `);
+}
+
+async function saveSub(id) {
+  try {
+    await api('PUT', '/admin/subscriptions/' + id, { status: document.getElementById('msStatus').value });
+    toast('Subscription updated'); closeModal(); loadSubs();
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 // ── System ──
 async function loadSystem() {
   const main = document.getElementById('mainContent');
-  main.innerHTML = `<div class="card"><h2>System Actions</h2>
-    <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">Administrative operations for the WULU Backend.</p>
-    <button class="btn-sm" style="padding:8px 16px;margin-right:8px" onclick="healthCheck()">Health Check</button>
-    <button class="btn-sm btn-danger" style="padding:8px 16px" onclick="restartBackend()">Restart Backend (PM2)</button>
-  </div>
-  <div class="card" id="sysLog"><h2>Recent Logs</h2><div class="empty-state">Click Health Check to test</div></div>`;
+  main.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const config = await api('GET', '/admin/config');
+    main.innerHTML = `
+      <div class="card">
+        <h2>NewAPI Configuration</h2>
+        <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">Configure the NewAPI backend for model proxy.</p>
+        <div class="config-grid">
+          <div>
+            <label>Base URL</label>
+            <input id="cfgNewApiUrl" value="${config.NEWAPI_BASE_URL||''}" placeholder="https://api.newapi.com">
+          </div>
+          <div>
+            <label>API Key</label>
+            <input id="cfgNewApiKey" type="password" value="${config.NEWAPI_API_KEY||''}" placeholder="sk-...">
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <button class="btn-sm" style="padding:8px 16px" onclick="saveConfig()">Save Config</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>System Actions</h2>
+        <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">Administrative operations for the WULU Backend.</p>
+        <button class="btn-sm" style="padding:8px 16px;margin-right:8px" onclick="healthCheck()">Health Check</button>
+        <button class="btn-sm btn-danger" style="padding:8px 16px" onclick="restartBackend()">Restart Backend (PM2)</button>
+      </div>
+      <div class="card" id="sysLog"><h2>System Status</h2><div class="empty-state">Click Health Check to test</div></div>`;
+  } catch(e) {
+    main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+async function saveConfig() {
+  try {
+    await api('PUT', '/admin/config', {
+      NEWAPI_BASE_URL: document.getElementById('cfgNewApiUrl').value,
+      NEWAPI_API_KEY: document.getElementById('cfgNewApiKey').value,
+    });
+    toast('Configuration saved');
+  } catch(e) { toast(e.message, 'error'); }
 }
 
 async function healthCheck() {
