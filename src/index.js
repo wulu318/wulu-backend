@@ -16,6 +16,8 @@ const modelProxyRoutes = require('./routes/model-proxy');
 const memoryRoutes = require('./routes/memory');
 const adminRoutes = require('./routes/admin');
 const updateRoutes = require('./routes/update');
+const skillStoreRoutes = require('./routes/skill-store');
+const kitStoreRoutes = require('./routes/kit-store');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -63,6 +65,8 @@ app.use('/api/v1', modelProxyRoutes);   // /api/v1/chat/completions etc.
 app.use('/api/memory', memoryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/update', updateRoutes);
+app.use('/api/skill-store', skillStoreRoutes);
+app.use('/api/kit-store', kitStoreRoutes);
 
 // ─── Error Handler ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
