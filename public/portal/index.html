@@ -60,7 +60,7 @@ a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
 .pricing-card .price span{font-size:0.9rem;font-weight:400;color:var(--text-dim)}
 .pricing-card ul{list-style:none;padding:0;margin:1rem 0}
 .pricing-card ul li{padding:0.4rem 0;font-size:0.9rem;color:var(--text-dim)}
-.pricing-card ul li::before{content:'✓ ';color:var(--gold)}
+.pricing-card ul li::before{content:'鉁?';color:var(--gold)}
 
 /* Profile */
 .profile-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;margin-top:2rem}
@@ -92,21 +92,30 @@ a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
 <div id="app"></div>
 
 <script>
-// ══════════════════════════════════════════════════════════════
-// Portal SPA — Hash Router
-// ══════════════════════════════════════════════════════════════
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲
+// Portal SPA 鈥?Hash Router
+// 鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲鈺愨晲
 const API = '/api/auth';
 const $ = s => document.querySelector(s);
 const app = document.getElementById('app');
 const nav = document.getElementById('nav');
 
-// Read redirect_uri and state from URL (set by Electron client)
-const urlParams = new URLSearchParams(window.location.search);
-const REDIRECT_URI = urlParams.get('redirect_uri') || '';
-const STATE = urlParams.get('state') || '';
-const SOURCE = urlParams.get('source') || '';
+// Read redirect_uri and state from URL.
+// The Electron client appends these as hash query params:
+//   https://ai.005656.xyz/portal#/login?redirect_uri=...&state=...
+// We must parse them from the hash, not from window.location.search.
+function getHashParams() {
+  const hash = window.location.hash.slice(1) || ''; // remove #
+  const qIdx = hash.indexOf('?');
+  if (qIdx < 0) return new URLSearchParams();
+  return new URLSearchParams(hash.slice(qIdx + 1));
+}
+const hashParams = getHashParams();
+const REDIRECT_URI = hashParams.get('redirect_uri') || '';
+const STATE = hashParams.get('state') || '';
+const SOURCE = hashParams.get('source') || '';
 
-// ─── Router ───────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Router 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function getHash() {
   const hash = window.location.hash.slice(1) || '/login';
   return hash.startsWith('/') ? hash : '/' + hash;
@@ -145,7 +154,7 @@ function render() {
 
 window.addEventListener('hashchange', render);
 
-// ─── API Helper ──────────────────────────────────────────────
+// 鈹€鈹€鈹€ API Helper 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 async function apiFetch(endpoint, options = {}) {
   const token = localStorage.getItem('portal_token');
   const headers = { 'Content-Type': 'application/json' };
@@ -156,7 +165,7 @@ async function apiFetch(endpoint, options = {}) {
   return data;
 }
 
-// ─── Redirect after login/register ──────────────────────────
+// 鈹€鈹€鈹€ Redirect after login/register 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function handleAuthSuccess(code) {
   if (REDIRECT_URI) {
     // Electron OAuth flow: redirect to local callback
@@ -169,7 +178,7 @@ function handleAuthSuccess(code) {
   }
 }
 
-// ─── Login ───────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Login 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function renderLogin() {
   app.innerHTML = `
   <div class="container">
@@ -214,8 +223,17 @@ async function doLogin() {
     });
 
     if (data.redirectUrl && REDIRECT_URI) {
-      // Electron OAuth: redirect to callback
+      // Electron OAuth: redirect to local callback server which will
+      // capture the code and relay it back to the Electron app
       window.location.href = data.redirectUrl;
+      return;
+    }
+
+    // Fallback: if we got an authCode but no redirectUrl, construct it manually
+    if (data.code && REDIRECT_URI) {
+      const sep = REDIRECT_URI.includes('?') ? '&' : '?';
+      const callbackUrl = `${REDIRECT_URI}${sep}code=${encodeURIComponent(data.code)}&state=${encodeURIComponent(STATE)}`;
+      window.location.href = callbackUrl;
       return;
     }
 
@@ -231,7 +249,7 @@ async function doLogin() {
   }
 }
 
-// ─── Register ────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Register 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function renderRegister() {
   app.innerHTML = `
   <div class="container">
@@ -314,6 +332,14 @@ async function doRegister() {
       return;
     }
 
+    // Fallback: if we got an authCode but no redirectUrl, construct it manually
+    if (data.code && REDIRECT_URI) {
+      const sep = REDIRECT_URI.includes('?') ? '&' : '?';
+      const callbackUrl = `${REDIRECT_URI}${sep}code=${encodeURIComponent(data.code)}&state=${encodeURIComponent(STATE)}`;
+      window.location.href = callbackUrl;
+      return;
+    }
+
     sucEl.textContent = 'Account created! Redirecting...';
     sucEl.classList.add('show');
     setTimeout(() => navigate('/login'), 2000);
@@ -326,7 +352,7 @@ async function doRegister() {
   }
 }
 
-// ─── Pricing ─────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Pricing 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function renderPricing() {
   app.innerHTML = `
   <div class="container">
@@ -362,7 +388,7 @@ function renderPricing() {
   </div>`;
 }
 
-// ─── Profile ─────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Profile 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 async function renderProfile() {
   app.innerHTML = `<div class="container"><div class="auth-card"><h1>Loading...</h1></div></div>`;
 
@@ -374,7 +400,7 @@ async function renderProfile() {
       <div class="profile-card">
         <h2>Account</h2>
         <div class="profile-row"><span class="label">Email</span><span class="value">${esc(data.email)}</span></div>
-        <div class="profile-row"><span class="label">Name</span><span class="value">${esc(data.displayName || '—')}</span></div>
+        <div class="profile-row"><span class="label">Name</span><span class="value">${esc(data.displayName || '鈥?)}</span></div>
         <div class="profile-row"><span class="label">Plan</span><span class="value" style="color:var(--gold)">${esc(data.planName || 'Free')}</span></div>
         <div class="profile-row"><span class="label">Quota</span><span class="value">${formatNum(data.quotaRemaining)} / ${formatNum(data.quotaTotal)}</span></div>
         <div class="quota-bar"><div class="quota-bar-fill" style="width:${quotaPct}%"></div></div>
@@ -434,7 +460,7 @@ async function doChangePw() {
   }
 }
 
-// ─── Success ─────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Success 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function renderSuccess() {
   app.innerHTML = `
   <div class="container">
@@ -447,7 +473,7 @@ function renderSuccess() {
   </div>`;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Helpers 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function logout() {
   localStorage.removeItem('portal_token');
   navigate('/login');
@@ -461,11 +487,11 @@ function esc(s) {
 }
 
 function formatNum(n) {
-  if (!n && n !== 0) return '—';
+  if (!n && n !== 0) return '鈥?;
   return Number(n).toLocaleString();
 }
 
-// ─── Init ────────────────────────────────────────────────────
+// 鈹€鈹€鈹€ Init 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 render();
 </script>
 </body>
