@@ -67,10 +67,12 @@ router.post('/register', (req, res) => {
   const id = uuidv4();
   const hash = bcrypt.hashSync(password, 12);
   // Assign free plan
-  const freePlan = db.prepare('SELECT id FROM plans WHERE name = ? AND is_active = 1').get('Free');
+  const freePlan = db.prepare('SELECT id, quota_monthly FROM plans WHERE name = ? AND is_active = 1').get('Free');
+  const planId = freePlan?.id || null;
+  const planQuota = freePlan?.quota_monthly || 100000;
 
   db.prepare(`INSERT INTO users (id, email, password_hash, display_name, role, quota_remaining, quota_total, plan_id)
-    VALUES (?, ?, ?, ?, 'user', 100000, 100000, ?)`).run(id, email, hash, displayName || '', freePlan?.id || null);
+    VALUES (?, ?, ?, ?, 'user', ?, ?, ?)`).run(id, email, hash, displayName || '', planQuota, planQuota, planId);
 
   const token = generateToken({ id, email, role: 'user', display_name: displayName || '' });
   res.status(201).json({ token, user: { id, email, displayName: displayName || '', role: 'user' } });
@@ -130,6 +132,12 @@ router.get('/me', authMiddleware, (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.sub);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
+  // Include plan details
+  let plan = null;
+  if (user.plan_id) {
+    plan = db.prepare('SELECT id, name, quota_monthly, features, model_access, max_context_tokens FROM plans WHERE id = ?').get(user.plan_id);
+  }
+
   res.json({
     id: user.id,
     email: user.email,
@@ -137,8 +145,13 @@ router.get('/me', authMiddleware, (req, res) => {
     avatarUrl: user.avatar_url,
     role: user.role,
     planId: user.plan_id,
+    planName: plan?.name || null,
+    modelAccess: plan ? JSON.parse(plan.model_access || '[]') : [],
+    features: plan ? JSON.parse(plan.features || '{}') : {},
+    maxContextTokens: plan?.max_context_tokens || 4096,
     quotaRemaining: user.quota_remaining,
     quotaTotal: user.quota_total,
+    quotaPercentage: user.quota_total > 0 ? Math.round((user.quota_remaining / user.quota_total) * 100) : 0,
     createdAt: user.created_at,
     lastLoginAt: user.last_login_at,
   });
