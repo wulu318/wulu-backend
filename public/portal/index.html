@@ -1,1 +1,472 @@
-<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0;url=https://ai.005656.xyz/about/"></head><body><p>Redirecting to <a href="https://ai.005656.xyz/about/">WULU SuperAgent</a>...</p></body></html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WULU SuperAgent</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#000;--surface:#111;--surface2:#1a1a1a;--border:#222;--gold:#FFD700;--gold-dim:#B8860B;--gold-light:#FFE44D;--text:#e0e0e0;--text-dim:#888;--danger:#ef4444;--success:#22c55e}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh}
+a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
+
+/* Header */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-logo{font-size:1.2rem;font-weight:700;color:var(--gold);letter-spacing:0.5px}
+.header-nav{display:flex;gap:1.5rem;align-items:center}
+.header-nav a{color:var(--text-dim);font-size:0.9rem;transition:color .2s}
+.header-nav a:hover,.header-nav a.active{color:var(--gold);text-decoration:none}
+
+/* Main Container */
+.container{max-width:480px;margin:0 auto;padding:2rem 1rem}
+
+/* Auth Forms */
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem 2rem;margin-top:2rem}
+.auth-card h1{color:var(--gold);font-size:1.5rem;text-align:center;margin-bottom:0.5rem}
+.auth-card .subtitle{color:var(--text-dim);text-align:center;margin-bottom:2rem;font-size:0.9rem}
+.form-group{margin-bottom:1.2rem}
+.form-group label{display:block;font-size:0.85rem;color:var(--text-dim);margin-bottom:0.4rem}
+.form-group input{width:100%;padding:0.75rem 1rem;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.95rem;outline:none;transition:border-color .2s}
+.form-group input:focus{border-color:var(--gold)}
+.form-group input::placeholder{color:#555}
+
+.btn{display:block;width:100%;padding:0.8rem;border:none;border-radius:10px;font-size:1rem;font-weight:600;cursor:pointer;transition:opacity .2s}
+.btn-primary{background:var(--gold);color:#000}
+.btn-primary:hover{opacity:.9;background:var(--gold-light)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
+
+.auth-switch{text-align:center;margin-top:1.5rem;font-size:0.9rem;color:var(--text-dim)}
+.auth-switch a{color:var(--gold);cursor:pointer}
+
+.error-msg{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--danger);padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.85rem;display:none}
+.error-msg.show{display:block}
+.success-msg{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:var(--success);padding:0.75rem 1rem;border-radius:8px;margin-bottom:1rem;font-size:0.85rem;display:none}
+.success-msg.show{display:block}
+
+/* Password Strength */
+.pw-strength{height:4px;border-radius:2px;margin-top:0.4rem;overflow:hidden;background:var(--surface2)}
+.pw-strength-bar{height:100%;width:0;transition:width .3s,background .3s;border-radius:2px}
+.pw-hint{font-size:0.75rem;color:var(--text-dim);margin-top:0.3rem}
+
+/* Pricing */
+.pricing-cards{display:flex;flex-direction:column;gap:1.5rem;margin-top:2rem}
+.pricing-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;position:relative;transition:border-color .2s}
+.pricing-card.featured{border-color:var(--gold)}
+.pricing-card.featured::before{content:'POPULAR';position:absolute;top:-10px;right:20px;background:var(--gold);color:#000;font-size:0.7rem;font-weight:700;padding:0.25rem 0.75rem;border-radius:4px}
+.pricing-card h2{color:var(--gold);font-size:1.3rem;margin-bottom:0.3rem}
+.pricing-card .price{font-size:2rem;font-weight:700;margin:1rem 0}
+.pricing-card .price span{font-size:0.9rem;font-weight:400;color:var(--text-dim)}
+.pricing-card ul{list-style:none;padding:0;margin:1rem 0}
+.pricing-card ul li{padding:0.4rem 0;font-size:0.9rem;color:var(--text-dim)}
+.pricing-card ul li::before{content:'✓ ';color:var(--gold)}
+
+/* Profile */
+.profile-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;margin-top:2rem}
+.profile-card h2{color:var(--gold);font-size:1.2rem;margin-bottom:1.5rem}
+.profile-row{display:flex;justify-content:space-between;padding:0.75rem 0;border-bottom:1px solid var(--border)}
+.profile-row:last-child{border-bottom:none}
+.profile-row .label{color:var(--text-dim);font-size:0.9rem}
+.profile-row .value{font-weight:500;font-size:0.9rem}
+.quota-bar{width:100%;height:8px;background:var(--surface2);border-radius:4px;margin-top:0.5rem;overflow:hidden}
+.quota-bar-fill{height:100%;background:var(--gold);border-radius:4px;transition:width .3s}
+
+/* Success Page */
+.success-container{text-align:center;padding:4rem 2rem}
+.success-icon{font-size:4rem;color:var(--gold);margin-bottom:1rem}
+.success-container h1{color:var(--gold);margin-bottom:0.5rem}
+.success-container p{color:var(--text-dim);margin-bottom:2rem}
+
+/* Responsive */
+@media(max-width:600px){.header{padding:0 1rem}.auth-card{padding:1.5rem 1.2rem}.container{padding:1rem 0.5rem}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">WULU SuperAgent</div>
+  <div class="header-nav" id="nav"></div>
+</div>
+
+<div id="app"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+// Portal SPA — Hash Router
+// ══════════════════════════════════════════════════════════════
+const API = '/api/auth';
+const $ = s => document.querySelector(s);
+const app = document.getElementById('app');
+const nav = document.getElementById('nav');
+
+// Read redirect_uri and state from URL (set by Electron client)
+const urlParams = new URLSearchParams(window.location.search);
+const REDIRECT_URI = urlParams.get('redirect_uri') || '';
+const STATE = urlParams.get('state') || '';
+const SOURCE = urlParams.get('source') || '';
+
+// ─── Router ───────────────────────────────────────────────────
+function getHash() {
+  const hash = window.location.hash.slice(1) || '/login';
+  return hash.startsWith('/') ? hash : '/' + hash;
+}
+
+function navigate(path) {
+  window.location.hash = path;
+}
+
+function render() {
+  const path = getHash();
+  // Update nav
+  const isLoggedIn = !!localStorage.getItem('portal_token');
+  if (isLoggedIn && path === '/login') { navigate('/profile'); return; }
+  if (!isLoggedIn && path === '/profile') { navigate('/login'); return; }
+
+  let navHtml = '';
+  if (path === '/login' || path === '/register') {
+    navHtml = `<a href="#/pricing">Pricing</a>`;
+  } else {
+    navHtml = `<a href="#/pricing">Pricing</a>`;
+    if (isLoggedIn) navHtml += ` <a href="#/profile">Profile</a> <a href="#" onclick="logout()">Logout</a>`;
+    else navHtml += ` <a href="#/login">Login</a>`;
+  }
+  nav.innerHTML = navHtml;
+
+  switch (path) {
+    case '/login': renderLogin(); break;
+    case '/register': renderRegister(); break;
+    case '/pricing': renderPricing(); break;
+    case '/profile': renderProfile(); break;
+    case '/success': renderSuccess(); break;
+    default: navigate('/login');
+  }
+}
+
+window.addEventListener('hashchange', render);
+
+// ─── API Helper ──────────────────────────────────────────────
+async function apiFetch(endpoint, options = {}) {
+  const token = localStorage.getItem('portal_token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(API + endpoint, { ...options, headers: { ...headers, ...options.headers } });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+// ─── Redirect after login/register ──────────────────────────
+function handleAuthSuccess(code) {
+  if (REDIRECT_URI) {
+    // Electron OAuth flow: redirect to local callback
+    const sep = REDIRECT_URI.includes('?') ? '&' : '?';
+    const url = `${REDIRECT_URI}${sep}code=${encodeURIComponent(code)}&state=${encodeURIComponent(STATE)}`;
+    window.location.href = url;
+  } else {
+    // Web flow: show success
+    navigate('/success');
+  }
+}
+
+// ─── Login ───────────────────────────────────────────────────
+function renderLogin() {
+  app.innerHTML = `
+  <div class="container">
+    <div class="auth-card">
+      <h1>Welcome Back</h1>
+      <p class="subtitle">Sign in to your WULU SuperAgent account</p>
+      <div class="error-msg" id="loginError"></div>
+      <div class="form-group">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter password" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Sign In</button>
+      <p class="auth-switch">Don't have an account? <a href="#/register">Sign Up</a></p>
+    </div>
+  </div>`;
+
+  // Enter key support
+  ['loginEmail','loginPassword'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  });
+}
+
+async function doLogin() {
+  const errEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+
+  try {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+
+    const data = await apiFetch('/portal-login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, redirect_uri: REDIRECT_URI, state: STATE }),
+    });
+
+    if (data.redirectUrl && REDIRECT_URI) {
+      // Electron OAuth: redirect to callback
+      window.location.href = data.redirectUrl;
+      return;
+    }
+
+    // Web flow: store token and redirect
+    localStorage.setItem('portal_token', data.token || '');
+    navigate('/profile');
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+}
+
+// ─── Register ────────────────────────────────────────────────
+function renderRegister() {
+  app.innerHTML = `
+  <div class="container">
+    <div class="auth-card">
+      <h1>Create Account</h1>
+      <p class="subtitle">Get started with WULU SuperAgent for free</p>
+      <div class="error-msg" id="regError"></div>
+      <div class="success-msg" id="regSuccess"></div>
+      <div class="form-group">
+        <label for="regName">Display Name</label>
+        <input type="text" id="regName" placeholder="Your name" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="regEmail">Email</label>
+        <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="regPassword">Password</label>
+        <input type="password" id="regPassword" placeholder="At least 8 chars, letters + numbers" autocomplete="new-password" oninput="checkPwStrength(this.value)">
+        <div class="pw-strength"><div class="pw-strength-bar" id="pwBar"></div></div>
+        <div class="pw-hint" id="pwHint"></div>
+      </div>
+      <div class="form-group">
+        <label for="regPassword2">Confirm Password</label>
+        <input type="password" id="regPassword2" placeholder="Re-enter password" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary" id="regBtn" onclick="doRegister()">Create Account</button>
+      <p class="auth-switch">Already have an account? <a href="#/login">Sign In</a></p>
+    </div>
+  </div>`;
+
+  ['regName','regEmail','regPassword','regPassword2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+  });
+}
+
+function checkPwStrength(pw) {
+  const bar = document.getElementById('pwBar');
+  const hint = document.getElementById('pwHint');
+  if (!bar) return;
+  let score = 0;
+  if (pw.length >= 8) score++;
+  if (pw.length >= 12) score++;
+  if (/[a-z]/.test(pw) && /[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^a-zA-Z0-9]/.test(pw)) score++;
+
+  const colors = ['#ef4444','#ef4444','#f59e0b','#84cc16','#22c55e'];
+  const labels = ['','Weak','Fair','Good','Strong'];
+  bar.style.width = (score / 5 * 100) + '%';
+  bar.style.background = colors[score] || colors[0];
+  if (hint) hint.textContent = pw ? labels[score] || '' : '';
+}
+
+async function doRegister() {
+  const errEl = document.getElementById('regError');
+  const sucEl = document.getElementById('regSuccess');
+  const btn = document.getElementById('regBtn');
+  errEl.classList.remove('show');
+  sucEl.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+
+  try {
+    const displayName = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const password2 = document.getElementById('regPassword2').value;
+
+    if (password !== password2) throw new Error('Passwords do not match');
+
+    const data = await apiFetch('/portal-register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, displayName, redirect_uri: REDIRECT_URI, state: STATE }),
+    });
+
+    if (data.redirectUrl && REDIRECT_URI) {
+      window.location.href = data.redirectUrl;
+      return;
+    }
+
+    sucEl.textContent = 'Account created! Redirecting...';
+    sucEl.classList.add('show');
+    setTimeout(() => navigate('/login'), 2000);
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Create Account';
+  }
+}
+
+// ─── Pricing ─────────────────────────────────────────────────
+function renderPricing() {
+  app.innerHTML = `
+  <div class="container">
+    <div class="auth-card" style="text-align:center">
+      <h1>Choose Your Plan</h1>
+      <p class="subtitle">Start free, upgrade when you need more</p>
+    </div>
+    <div class="pricing-cards">
+      <div class="pricing-card">
+        <h2>Free</h2>
+        <div class="price">$0 <span>/ month</span></div>
+        <ul>
+          <li>100,000 tokens monthly quota</li>
+          <li>Access to basic models</li>
+          <li>Community support</li>
+          <li>5 scheduled tasks</li>
+        </ul>
+        <button class="btn btn-outline" onclick="navigate('/register')">Get Started</button>
+      </div>
+      <div class="pricing-card featured">
+        <h2>Pro</h2>
+        <div class="price">$9.99 <span>/ month</span></div>
+        <ul>
+          <li>2,000,000 tokens monthly quota</li>
+          <li>Access to all models</li>
+          <li>Priority support</li>
+          <li>Unlimited scheduled tasks</li>
+          <li>Advanced memory system</li>
+        </ul>
+        <button class="btn btn-primary" onclick="navigate('/register')">Upgrade to Pro</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── Profile ─────────────────────────────────────────────────
+async function renderProfile() {
+  app.innerHTML = `<div class="container"><div class="auth-card"><h1>Loading...</h1></div></div>`;
+
+  try {
+    const data = await apiFetch('/me');
+    const quotaPct = data.quotaPercentage || 0;
+    app.innerHTML = `
+    <div class="container">
+      <div class="profile-card">
+        <h2>Account</h2>
+        <div class="profile-row"><span class="label">Email</span><span class="value">${esc(data.email)}</span></div>
+        <div class="profile-row"><span class="label">Name</span><span class="value">${esc(data.displayName || '—')}</span></div>
+        <div class="profile-row"><span class="label">Plan</span><span class="value" style="color:var(--gold)">${esc(data.planName || 'Free')}</span></div>
+        <div class="profile-row"><span class="label">Quota</span><span class="value">${formatNum(data.quotaRemaining)} / ${formatNum(data.quotaTotal)}</span></div>
+        <div class="quota-bar"><div class="quota-bar-fill" style="width:${quotaPct}%"></div></div>
+        <p style="text-align:center;color:var(--text-dim);font-size:0.8rem;margin-top:0.3rem">${quotaPct}% remaining</p>
+      </div>
+
+      <div class="profile-card">
+        <h2>Change Password</h2>
+        <div class="error-msg" id="cpError"></div>
+        <div class="success-msg" id="cpSuccess"></div>
+        <div class="form-group">
+          <label for="cpCurrent">Current Password</label>
+          <input type="password" id="cpCurrent" autocomplete="current-password">
+        </div>
+        <div class="form-group">
+          <label for="cpNew">New Password</label>
+          <input type="password" id="cpNew" placeholder="At least 8 chars, letters + numbers" autocomplete="new-password">
+        </div>
+        <div class="form-group">
+          <label for="cpNew2">Confirm New Password</label>
+          <input type="password" id="cpNew2" autocomplete="new-password">
+        </div>
+        <button class="btn btn-primary" onclick="doChangePw()">Update Password</button>
+      </div>
+
+      <div style="text-align:center;margin-top:2rem">
+        <button class="btn btn-outline" onclick="logout()" style="max-width:200px;margin:0 auto">Sign Out</button>
+      </div>
+    </div>`;
+  } catch (e) {
+    localStorage.removeItem('portal_token');
+    navigate('/login');
+  }
+}
+
+async function doChangePw() {
+  const errEl = document.getElementById('cpError');
+  const sucEl = document.getElementById('cpSuccess');
+  errEl.classList.remove('show');
+  sucEl.classList.remove('show');
+
+  try {
+    const currentPassword = document.getElementById('cpCurrent').value;
+    const newPassword = document.getElementById('cpNew').value;
+    const newPassword2 = document.getElementById('cpNew2').value;
+    if (newPassword !== newPassword2) throw new Error('Passwords do not match');
+
+    await apiFetch('/change-password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+    sucEl.textContent = 'Password updated successfully';
+    sucEl.classList.add('show');
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+  }
+}
+
+// ─── Success ─────────────────────────────────────────────────
+function renderSuccess() {
+  app.innerHTML = `
+  <div class="container">
+    <div class="success-container">
+      <div class="success-icon">&#10003;</div>
+      <h1>You're All Set!</h1>
+      <p>You can now close this page and return to WULU SuperAgent.</p>
+      <button class="btn btn-primary" style="max-width:240px;margin:0 auto" onclick="navigate('/profile')">Go to Profile</button>
+    </div>
+  </div>`;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────
+function logout() {
+  localStorage.removeItem('portal_token');
+  navigate('/login');
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function formatNum(n) {
+  if (!n && n !== 0) return '—';
+  return Number(n).toLocaleString();
+}
+
+// ─── Init ────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
