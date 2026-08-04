@@ -7,9 +7,27 @@ const { authMiddleware } = require('../middleware/auth');
 const router = express.Router();
 router.use(authMiddleware);
 
-const NEWAPI_BASE = () => process.env.NEWAPI_BASE_URL || '';
-const NEWAPI_KEY = () => process.env.NEWAPI_API_KEY || '';
+const NEWAPI_BASE = () => {
+  // Priority: DB system_config > env var
+  try {
+    const db = getDb();
+    const row = db.prepare("SELECT value FROM system_config WHERE key = 'NEWAPI_BASE_URL'").get();
+    if (row && row.value) return row.value;
+  } catch (_) {}
+  return process.env.NEWAPI_BASE_URL || '';
+};
 
+const NEWAPI_KEY = () => {
+  // Priority: DB system_config > env var
+  try {
+    const db = getDb();
+    const row = db.prepare("SELECT value FROM system_config WHERE key = 'NEWAPI_API_KEY'").get();
+    if (row && row.value) return row.value;
+  } catch (_) {}
+  return process.env.NEWAPI_API_KEY || '';
+};
+
+// Models that are proxied through this endpoint
 const PROXY_PATHS = [
   '/chat/completions',
   '/completions',
@@ -20,6 +38,7 @@ const PROXY_PATHS = [
   '/audio/transcriptions',
 ];
 
+// ─── Universal proxy handler ─────────────────────────────────────
 async function proxyRequest(req, res) {
   const basePath = NEWAPI_BASE();
   const apiKey = NEWAPI_KEY();
@@ -29,15 +48,18 @@ async function proxyRequest(req, res) {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.sub);
   if (!user || !user.is_active) return res.status(403).json({ error: 'Account inactive' });
 
+  // Check quota
   if (user.quota_remaining <= 0) {
     return res.status(429).json({ error: 'Quota exhausted. Please upgrade your plan.' });
   }
 
+  // Check model access
   const reqModel = req.body?.model;
   if (reqModel && user.plan_id) {
     const plan = db.prepare('SELECT model_access FROM plans WHERE id = ?').get(user.plan_id);
     if (plan) {
       const allowed = JSON.parse(plan.model_access || '[]');
+      // If allowed list is non-empty and model not in it
       if (allowed.length > 0 && !allowed.includes(reqModel) && !allowed.includes('*')) {
         return res.status(403).json({ error: `Model '${reqModel}' not available in your plan. Available: ${allowed.join(', ')}` });
       }
@@ -45,14 +67,16 @@ async function proxyRequest(req, res) {
   }
 
   const startTime = Date.now();
-  const path = req.path;
+  const path = req.path; // e.g. /chat/completions
   const targetUrl = `${basePath}/v1${path}`;
 
+  // Build request to NewAPI
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${apiKey}`,
   };
 
+  // If user has their own NewAPI token, use that instead (per-user key)
   if (user.newapi_token) {
     headers['Authorization'] = `Bearer ${user.newapi_token}`;
   }
@@ -72,6 +96,7 @@ async function proxyRequest(req, res) {
       return res.status(response.status).json({ error: 'Upstream error', detail: errorBody });
     }
 
+    // Handle streaming response
     if (isStream && response.headers.get('content-type')?.includes('text/event-stream')) {
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
@@ -86,6 +111,7 @@ async function proxyRequest(req, res) {
 
       response.body.on('end', () => {
         res.end();
+        // Parse token usage from stream
         const usageMatch = totalContent.match(/"usage":\s*\{[^}]*"prompt_tokens":\s*(\d+)[^}]*"completion_tokens":\s*(\d+)[^}]*"total_tokens":\s*(\d+)/);
         if (usageMatch) {
           const pt = parseInt(usageMatch[1], 10);
@@ -103,9 +129,11 @@ async function proxyRequest(req, res) {
       return;
     }
 
+    // Non-streaming response
     const data = await response.json();
     res.json(data);
 
+    // Record usage
     const usage = data.usage;
     if (usage) {
       recordUsage(db, user.id, reqModel || data.model || 'unknown',
@@ -119,17 +147,21 @@ async function proxyRequest(req, res) {
 }
 
 function recordUsage(db, userId, model, promptTokens, completionTokens, totalTokens, latencyMs, isStream) {
+  // Log
   db.prepare(`INSERT INTO usage_logs (user_id, model, prompt_tokens, completion_tokens, total_tokens, request_type, latency_ms, is_stream)
     VALUES (?, ?, ?, ?, ?, 'chat', ?, ?)`).run(userId, model, promptTokens, completionTokens, totalTokens, latencyMs, isStream ? 1 : 0);
 
+  // Deduct quota (use total_tokens)
   if (totalTokens > 0) {
     db.prepare('UPDATE users SET quota_remaining = MAX(0, quota_remaining - ?), updated_at = ? WHERE id = ?')
       .run(totalTokens, Math.floor(Date.now() / 1000), userId);
   }
 }
 
+// ─── Register proxy routes ───────────────────────────────────────
 for (const p of PROXY_PATHS) {
   router.post(p, proxyRequest);
+  // GET for /models
   if (p === '/models') {
     router.get(p, proxyRequest);
   }
