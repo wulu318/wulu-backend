@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WULU SuperAgent - User Manual</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--card:#111;--border:#222;--gold:#FFD700;--gold-dim:#B8860B;--text:#e0e0e0;--text-dim:#888}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.7}
+.container{max-width:860px;margin:0 auto;padding:40px 24px}
+h1{color:var(--gold);font-size:32px;margin-bottom:8px;letter-spacing:2px}
+.subtitle{color:var(--text-dim);margin-bottom:40px;font-size:14px}
+h2{color:var(--gold);font-size:22px;margin-top:40px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+h3{color:var(--text);font-size:16px;margin-top:24px;margin-bottom:12px}
+p{margin-bottom:12px;color:var(--text)}
+ul,ol{margin-bottom:16px;padding-left:24px}
+li{margin-bottom:6px}
+code{background:rgba(255,215,0,.1);color:var(--gold);padding:2px 6px;border-radius:3px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:20px}
+.badge{display:inline-block;background:var(--gold);color:#000;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;margin-right:6px}
+.plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px}
+.plan-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:20px;text-align:center}
+.plan-card .name{color:var(--gold);font-size:20px;font-weight:700;margin-bottom:4px}
+.plan-card .price{font-size:28px;font-weight:800;margin:8px 0}
+.plan-card .quota{color:var(--text-dim);font-size:13px;margin-bottom:12px}
+.plan-card ul{list-style:none;padding:0;text-align:left;font-size:13px}
+.plan-card li{padding:4px 0}
+a{color:var(--gold);text-decoration:none}
+a:hover{text-decoration:underline}
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
+.topbar .logo{color:var(--gold);font-size:20px;font-weight:800;letter-spacing:3px}
+.topbar nav a{color:var(--text-dim);text-decoration:none;font-size:13px;margin-left:16px}
+.topbar nav a:hover{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="topbar"><div class="logo">WULU</div><nav><a href="#getting-started">Quick Start</a><a href="#plans">Plans</a><a href="#cloud">WULU Cloud</a><a href="#features">Features</a><a href="#faq">FAQ</a></nav></div>
+<div class="container">
+<h1>WULU SuperAgent</h1>
+<p class="subtitle">User Manual - Version 2026.8</p>
+<h2 id="getting-started">Getting Started</h2>
+<div class="card">
+<h3>First Launch</h3>
+<ol><li>Download and install WULU SuperAgent from the download page</li><li>Launch the app - you can start chatting immediately with a local API key (no account needed)</li><li>Go to Settings to configure your AI provider (OpenAI, Claude, etc.)</li></ol>
+<h3>Two Modes of Use</h3>
+<p><span class="badge">Offline Mode</span> Enter your own API key in Settings. All requests go directly to the AI provider. No account needed.</p>
+<p><span class="badge">WULU Cloud</span> Sign up for a WULU account and subscribe to a plan. Use the shared NewAPI backend with quota management.</p>
+</div>
+<h2 id="plans">Plans and Quota</h2>
+<div class="card">
+<p>Your plan determines how many tokens you can use per month and which AI models are available.</p>
+<div class="plan-grid">
+<div class="plan-card"><div class="name">Free</div><div class="price">$0</div><div class="quota">100K tokens/month</div><ul><li>gpt-4o-mini</li><li>Community support</li><li>Basic features</li></ul></div>
+<div class="plan-card"><div class="name">Pro</div><div class="price">$29</div><div class="quota">2M tokens/month</div><ul><li>gpt-4o-mini, gpt-4o</li><li>claude-3-5-sonnet</li><li>Priority support</li></ul></div>
+<div class="plan-card"><div class="name">Max</div><div class="price">$99</div><div class="quota">10M tokens/month</div><ul><li>All models</li><li>claude-3-opus, o1-pro</li><li>Dedicated support</li></ul></div>
+</div>
+<h3>How Quota Works</h3>
+<ul><li>Each API request consumes tokens (prompt + completion)</li><li>Tokens are deducted from your <code>quota_remaining</code> after each request</li><li>When quota reaches 0, requests are blocked until you upgrade or the quota resets</li><li>Subscribe to a higher plan at any time - your quota updates immediately</li></ul>
+</div>
+<h2 id="cloud">WULU Cloud</h2>
+<div class="card">
+<h3>Sign Up</h3>
+<ol><li>Go to Settings &gt; WULU Cloud in the app</li><li>Click "Register" and create an account</li><li>Log in with your credentials</li><li>Your Free plan quota is ready immediately</li></ol>
+<h3>Model Proxy</h3>
+<p>When WULU Cloud is active, all AI requests are proxied through the WULU backend:</p>
+<ul><li>Your request goes to <code>ai.005656.xyz/api/v1/chat/completions</code></li><li>The backend checks your quota and model access</li><li>If allowed, the request is forwarded to NewAPI</li><li>Tokens used are deducted from your quota</li></ul>
+<h3>Change Password</h3>
+<ol><li>In the app: Settings &gt; WULU Cloud &gt; Change Password</li><li>Or in the admin panel at <a href="https://ai.005656.xyz/admin.html">ai.005656.xyz/admin.html</a></li></ol>
+</div>
+<h2 id="features">Features</h2>
+<div class="card">
+<h3>Cowork / Agent Mode</h3>
+<p>WULU SuperAgent includes an AI agent engine that can perform multi-step tasks autonomously, including web browsing, code execution, file operations, and plugin extensions.</p>
+<h3>Memory System</h3>
+<ul><li><strong>Working Memory</strong>: User-defined notes and preferences</li><li><strong>Core Memory</strong>: Important long-term facts</li><li><strong>Knowledge Memory</strong>: Reference material</li><li><strong>Diary Index</strong>: Time-based entries with tags</li></ul>
+<h3>IM Bot Integration</h3>
+<p>Connect WULU to your team tools: WeChat, DingTalk, Feishu/Lark, Enterprise WeChat.</p>
+</div>
+<h2 id="faq">FAQ</h2>
+<div class="card">
+<h3>Is my data safe?</h3><p>WULU SuperAgent processes data locally. When using WULU Cloud, requests pass through our backend but are not stored beyond usage logging.</p>
+<h3>Can I use my own API key?</h3><p>Yes. Enter your key in Settings and requests go directly to the provider. No account needed.</p>
+<h3>What happens when my quota runs out?</h3><p>You will see an error. Upgrade your plan or wait for the monthly reset.</p>
+<h3>Contact</h3><p>Email: <a href="mailto:contact@wulu-superagent.com">contact@wulu-superagent.com</a></p>
+</div>
+<p style="text-align:center;color:var(--text-dim);padding:40px 0;font-size:12px">WULU SuperAgent. All Rights Reserved.</p>
+</div>
+</body>
+</html>
