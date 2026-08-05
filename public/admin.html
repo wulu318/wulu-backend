@@ -101,6 +101,8 @@ tr:hover td{background:rgba(255,215,0,.02)}
       <a onclick="switchTab('users')">Users</a>
       <a onclick="switchTab('plans')">Plans</a>
       <a onclick="switchTab('subscriptions')">Subscriptions</a>
+      <a onclick="switchTab('skills')">插件市场</a>
+      <a onclick="switchTab('kits')">专家套件</a>
       <a onclick="switchTab('system')">System</a>
     </div>
     <div class="main" id="mainContent"></div>
@@ -200,9 +202,9 @@ function showApp(user) {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.sidebar a').forEach((a,i) => {
-    a.classList.toggle('active', ['dashboard','users','plans','subscriptions','system'][i] === tab);
+    a.classList.toggle('active', ['dashboard','users','plans','subscriptions','skills','kits','system'][i] === tab);
   });
-  const loaders = { dashboard: loadDashboard, users: loadUsers, plans: loadPlans, subscriptions: loadSubs, system: loadSystem };
+  const loaders = { dashboard: loadDashboard, users: loadUsers, plans: loadPlans, subscriptions: loadSubs, skills: loadSkills, kits: loadKits, system: loadSystem };
   if (loaders[tab]) loaders[tab]();
 }
 
@@ -414,6 +416,209 @@ async function saveSub(id) {
     await api('PUT', '/admin/subscriptions/' + id, { status: document.getElementById('msStatus').value });
     toast('Subscription updated'); closeModal(); loadSubs();
   } catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Skill Store (插件市场) ──
+async function loadSkills() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const data = await api('GET', '/admin/skills');
+    const skills = data.skills || [];
+    let rows = skills.map(s => `<tr>
+      <td><b>${s.id}</b></td>
+      <td>${s.name}${s.name_zh?' / '+s.name_zh:''}</td>
+      <td>${s.is_active?'<span class="badge-green">Active</span>':'<span class="badge-red">Inactive</span>'}</td>
+      <td>${s.sort_order||0}</td>
+      <td>
+        <button class="btn-sm" onclick='editSkill(${JSON.stringify(s).replace(/'/g,"&#39;")})'>Edit</button>
+        <button class="btn-sm btn-danger" onclick="delSkill('${s.id}')">Delete</button>
+      </td>
+    </tr>`).join('');
+    main.innerHTML = `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h2 style="margin:0">插件市场 (${skills.length})</h2>
+          <button class="btn-sm" style="padding:8px 16px" onclick="newSkill()">+ 新增插件</button>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>名称</th><th>状态</th><th>排序</th><th>操作</th></tr></thead>
+          <tbody>${rows||'<tr><td colspan="5"><div class="empty-state">暂无插件</div></td></tr>'}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+function newSkill() {
+  openModal(`
+    <h3>新增插件</h3>
+    <label>ID (唯一标识)</label><input id="skId" placeholder="e.g. my-skill">
+    <label>名称 (英文)</label><input id="skName" placeholder="My Skill">
+    <label>名称 (中文)</label><input id="skNameZh" placeholder="我的插件">
+    <label>描述 (英文)</label><textarea id="skDescEn" placeholder="English description"></textarea>
+    <label>描述 (中文)</label><textarea id="skDescZh" placeholder="中文描述"></textarea>
+    <label>标签 (JSON数组)</label><input id="skTags" placeholder='["productivity"]'>
+    <label>URL (可选)</label><input id="skUrl" placeholder="https://...">
+    <label>版本</label><input id="skVersion" value="1.0.0">
+    <label>作者</label><input id="skAuthor" value="WULU Team">
+    <label>排序</label><input id="skOrder" type="number" value="0">
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveSkill(null)">Create</button></div>
+  `);
+}
+
+function editSkill(s) {
+  openModal(`
+    <h3>编辑插件: ${s.id}</h3>
+    <label>名称 (英文)</label><input id="skName" value="${s.name||''}">
+    <label>名称 (中文)</label><input id="skNameZh" value="${s.name_zh||''}">
+    <label>描述 (英文)</label><textarea id="skDescEn">${s.description_en||''}</textarea>
+    <label>描述 (中文)</label><textarea id="skDescZh">${s.description_zh||''}</textarea>
+    <label>标签 (JSON数组)</label><input id="skTags" value='${s.tags||"[]"}'>
+    <label>URL (可选)</label><input id="skUrl" value="${s.url||''}">
+    <label>版本</label><input id="skVersion" value="${s.version||'1.0.0'}">
+    <label>作者</label><input id="skAuthor" value="${s.author||'WULU Team'}">
+    <label>排序</label><input id="skOrder" type="number" value="${s.sort_order||0}">
+    <label>状态</label><select id="skActive"><option value="1" ${s.is_active?'selected':''}>Active</option><option value="0" ${!s.is_active?'selected':''}>Inactive</option></select>
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveSkill('${s.id}')">Save</button></div>
+  `);
+}
+
+async function saveSkill(id) {
+  const body = {
+    id: id || document.getElementById('skId').value.trim(),
+    name: document.getElementById('skName').value.trim(),
+    name_zh: document.getElementById('skNameZh').value.trim(),
+    description_en: document.getElementById('skDescEn').value.trim(),
+    description_zh: document.getElementById('skDescZh').value.trim(),
+    tags: JSON.parse(document.getElementById('skTags').value || '[]'),
+    url: document.getElementById('skUrl').value.trim(),
+    version: document.getElementById('skVersion').value.trim(),
+    author: document.getElementById('skAuthor').value.trim(),
+    sort_order: parseInt(document.getElementById('skOrder').value) || 0,
+  };
+  if (document.getElementById('skActive')) body.is_active = document.getElementById('skActive').value === '1';
+  try {
+    if (id) await api('PUT', '/admin/skills/' + id, body);
+    else await api('POST', '/admin/skills', body);
+    toast('Saved'); closeModal(); loadSkills();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function delSkill(id) {
+  if (!confirm('删除插件 "' + id + '"？')) return;
+  try { await api('DELETE', '/admin/skills/' + id); toast('Deleted'); loadSkills(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Kit Store (专家套件) ──
+async function loadKits() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const data = await api('GET', '/admin/kits');
+    const kits = data.kits || [];
+    let rows = kits.map(k => {
+      let skillCount = 0;
+      try { skillCount = JSON.parse(k.skills||'[]').length; } catch { skillCount = 0; }
+      return `<tr>
+        <td><b>${k.id}</b></td>
+        <td>${k.name}${k.name_zh?' / '+k.name_zh:''}</td>
+        <td>${skillCount} 个技能</td>
+        <td>${k.is_active?'<span class="badge-green">Active</span>':'<span class="badge-red">Inactive</span>'}</td>
+        <td>
+          <button class="btn-sm" onclick='editKit(${JSON.stringify(k).replace(/'/g,"&#39;")})'>Edit</button>
+          <button class="btn-sm btn-danger" onclick="delKit('${k.id}')">Delete</button>
+        </td>
+      </tr>`;
+    }).join('');
+    main.innerHTML = `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h2 style="margin:0">专家套件 (${kits.length})</h2>
+          <button class="btn-sm" style="padding:8px 16px" onclick="newKit()">+ 新增套件</button>
+        </div>
+        <table>
+          <thead><tr><th>ID</th><th>名称</th><th>技能数</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody>${rows||'<tr><td colspan="5"><div class="empty-state">暂无套件</div></td></tr>'}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+function newKit() {
+  openModal(`
+    <h3>新增专家套件</h3>
+    <label>ID (唯一标识)</label><input id="ktId" placeholder="e.g. wulu-xxx-pack">
+    <label>名称 (英文)</label><input id="ktName" placeholder="My Pack">
+    <label>名称 (中文)</label><input id="ktNameZh" placeholder="我的套件">
+    <label>描述 (英文)</label><textarea id="ktDescEn"></textarea>
+    <label>描述 (中文)</label><textarea id="ktDescZh"></textarea>
+    <label>图标 URL</label><input id="ktIcon" placeholder="https://...">
+    <label>版本</label><input id="ktVersion" value="1.0.0">
+    <label>技能列表 (JSON)</label><textarea id="ktSkills" placeholder='[{"id":"web-search","name":{"en":"Web Search","zh":"网页搜索"}}]'></textarea>
+    <label>Bundle URL (可选)</label><input id="ktBundle" placeholder="https://.../bundle.zip">
+    <label>Bundle SHA256 (可选)</label><input id="ktBundleSha" placeholder="hex">
+    <label>Bundle Size (可选)</label><input id="ktBundleSize" placeholder="bytes">
+    <label>排序</label><input id="ktOrder" type="number" value="0">
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveKit(null)">Create</button></div>
+  `);
+}
+
+function editKit(k) {
+  let skillsStr = '[]';
+  try { skillsStr = JSON.stringify(JSON.parse(k.skills||'[]'), null, 2); } catch { skillsStr = '[]'; }
+  openModal(`
+    <h3>编辑套件: ${k.id}</h3>
+    <label>名称 (英文)</label><input id="ktName" value="${k.name||''}">
+    <label>名称 (中文)</label><input id="ktNameZh" value="${k.name_zh||''}">
+    <label>描述 (英文)</label><textarea id="ktDescEn">${k.description_en||''}</textarea>
+    <label>描述 (中文)</label><textarea id="ktDescZh">${k.description_zh||''}</textarea>
+    <label>图标 URL</label><input id="ktIcon" value="${k.icon||''}">
+    <label>版本</label><input id="ktVersion" value="${k.version||'1.0.0'}">
+    <label>技能列表 (JSON)</label><textarea id="ktSkills">${skillsStr}</textarea>
+    <label>Bundle URL (可选)</label><input id="ktBundle" value="${k.bundle||''}">
+    <label>Bundle SHA256 (可选)</label><input id="ktBundleSha" value="${k.bundle_sha256||''}">
+    <label>Bundle Size (可选)</label><input id="ktBundleSize" value="${k.bundle_size||''}">
+    <label>排序</label><input id="ktOrder" type="number" value="${k.sort_order||0}">
+    <label>状态</label><select id="ktActive"><option value="1" ${k.is_active?'selected':''}>Active</option><option value="0" ${!k.is_active?'selected':''}>Inactive</option></select>
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveKit('${k.id}')">Save</button></div>
+  `);
+}
+
+async function saveKit(id) {
+  const skillsVal = document.getElementById('ktSkills').value;
+  let skills = [];
+  try { skills = JSON.parse(skillsVal || '[]'); } catch { toast('技能列表必须是合法 JSON', 'error'); return; }
+  const body = {
+    id: id || document.getElementById('ktId').value.trim(),
+    name: document.getElementById('ktName').value.trim(),
+    name_zh: document.getElementById('ktNameZh').value.trim(),
+    description_en: document.getElementById('ktDescEn').value.trim(),
+    description_zh: document.getElementById('ktDescZh').value.trim(),
+    icon: document.getElementById('ktIcon').value.trim(),
+    version: document.getElementById('ktVersion').value.trim(),
+    skills,
+    bundle: document.getElementById('ktBundle').value.trim(),
+    bundle_sha256: document.getElementById('ktBundleSha').value.trim(),
+    bundle_size: document.getElementById('ktBundleSize').value.trim(),
+    sort_order: parseInt(document.getElementById('ktOrder').value) || 0,
+  };
+  if (document.getElementById('ktActive')) body.is_active = document.getElementById('ktActive').value === '1';
+  try {
+    if (id) await api('PUT', '/admin/kits/' + id, body);
+    else await api('POST', '/admin/kits', body);
+    toast('Saved'); closeModal(); loadKits();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function delKit(id) {
+  if (!confirm('删除套件 "' + id + '"？')) return;
+  try { await api('DELETE', '/admin/kits/' + id); toast('Deleted'); loadKits(); }
+  catch(e) { toast(e.message, 'error'); }
 }
 
 // ── System ──
