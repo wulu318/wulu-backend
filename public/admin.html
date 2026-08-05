@@ -103,6 +103,7 @@ tr:hover td{background:rgba(255,215,0,.02)}
       <a onclick="switchTab('subscriptions')">Subscriptions</a>
       <a onclick="switchTab('skills')">插件市场</a>
       <a onclick="switchTab('kits')">专家套件</a>
+      <a onclick="switchTab('versions')">版本管理</a>
       <a onclick="switchTab('system')">System</a>
     </div>
     <div class="main" id="mainContent"></div>
@@ -202,9 +203,9 @@ function showApp(user) {
 function switchTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.sidebar a').forEach((a,i) => {
-    a.classList.toggle('active', ['dashboard','users','plans','subscriptions','skills','kits','system'][i] === tab);
+    a.classList.toggle('active', ['dashboard','users','plans','subscriptions','skills','kits','versions','system'][i] === tab);
   });
-  const loaders = { dashboard: loadDashboard, users: loadUsers, plans: loadPlans, subscriptions: loadSubs, skills: loadSkills, kits: loadKits, system: loadSystem };
+  const loaders = { dashboard: loadDashboard, users: loadUsers, plans: loadPlans, subscriptions: loadSubs, skills: loadSkills, kits: loadKits, versions: loadVersions, system: loadSystem };
   if (loaders[tab]) loaders[tab]();
 }
 
@@ -509,6 +510,107 @@ async function saveSkill(id) {
 async function delSkill(id) {
   if (!confirm('删除插件 "' + id + '"？')) return;
   try { await api('DELETE', '/admin/skills/' + id); toast('Deleted'); loadSkills(); }
+  catch(e) { toast(e.message, 'error'); }
+}
+
+// ── Update Versions (版本管理) ──
+async function loadVersions() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="empty-state">Loading...</div>';
+  try {
+    const data = await api('GET', '/admin/versions');
+    const versions = data.versions || [];
+    let rows = versions.map(v => `<tr>
+      <td><b>${v.version}</b> ${v.is_latest?'<span class="badge-gold">LATEST</span>':''}</td>
+      <td>${v.title||''}</td>
+      <td>${v.date||''}</td>
+      <td>${v.is_active?'<span class="badge-green">Active</span>':'<span class="badge-red">Inactive</span>'}</td>
+      <td>${v.incremental_url?'<span class="badge-gold">增量包</span>':'<span class="badge-green">全量</span>'}</td>
+      <td>
+        <button class="btn-sm" onclick='editVersion(${JSON.stringify(v).replace(/'/g,"&#39;")})'>Edit</button>
+        <button class="btn-sm btn-danger" onclick="delVersion('${v.version}')">Delete</button>
+      </td>
+    </tr>`).join('');
+    main.innerHTML = `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <h2 style="margin:0">版本管理 (${versions.length})</h2>
+          <button class="btn-sm" style="padding:8px 16px" onclick="newVersion()">+ 新增版本</button>
+        </div>
+        <p style="color:var(--text-dim);font-size:13px;margin-bottom:12px">客户端检查更新时读取最新版本。下载 URL 支持全量安装包和增量包（从 baseVersion 升级到本版本的小补丁）。</p>
+        <table>
+          <thead><tr><th>版本</th><th>标题</th><th>日期</th><th>状态</th><th>更新方式</th><th>操作</th></tr></thead>
+          <tbody>${rows||'<tr><td colspan="6"><div class="empty-state">暂无版本</div></td></tr>'}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    main.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
+  }
+}
+
+function newVersion() {
+  openModal(`
+    <h3>新增版本</h3>
+    <label>版本号</label><input id="vVersion" placeholder="e.g. 2026.8.1">
+    <label>标题</label><input id="vTitle" placeholder="WULU SuperAgent v2026.8.1">
+    <label>发布日期</label><input id="vDate" placeholder="2026-08-01">
+    <label>更新日志 (每行一条)</label><textarea id="vNotes" rows="4" placeholder="新增功能...\\n修复问题..."></textarea>
+    <label>Windows x64 下载 URL</label><input id="vWinUrl" placeholder="https://.../WULU-Setup-x64-...exe">
+    <label>Windows x64 SHA256</label><input id="vWinSha" placeholder="hex (可选)">
+    <label>macOS ARM64 下载 URL</label><input id="vMacUrl" placeholder="https://.../WULU-darwin-arm64-...dmg">
+    <label>增量包基础版本 (可选)</label><input id="vIncBase" placeholder="e.g. 2026.7.23">
+    <label>增量包 URL (可选)</label><input id="vIncUrl" placeholder="https://.../patch-2026.7.23-to-2026.8.1.zip">
+    <label>增量包 SHA256</label><input id="vIncSha" placeholder="hex (可选)">
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveVersion(null)">Create</button></div>
+  `);
+}
+
+function editVersion(v) {
+  openModal(`
+    <h3>编辑版本: ${v.version}</h3>
+    <label>版本号</label><input id="vVersion" value="${v.version}" disabled>
+    <label>标题</label><input id="vTitle" value="${v.title||''}">
+    <label>发布日期</label><input id="vDate" value="${v.date||''}">
+    <label>更新日志 (每行一条)</label><textarea id="vNotes" rows="4">${(v.release_notes||'').replace(/\n/g,'\\n')}</textarea>
+    <label>Windows x64 下载 URL</label><input id="vWinUrl" value="${v.windows_x64_url||''}">
+    <label>Windows x64 SHA256</label><input id="vWinSha" value="${v.windows_x64_sha256||''}">
+    <label>macOS ARM64 下载 URL</label><input id="vMacUrl" value="${v.mac_arm_url||''}">
+    <label>Linux x64 URL (可选)</label><input id="vLinuxUrl" value="${v.linux_x64_url||''}">
+    <label>增量包基础版本 (可选)</label><input id="vIncBase" value="${v.incremental_base_version||''}">
+    <label>增量包 URL (可选)</label><input id="vIncUrl" value="${v.incremental_url||''}">
+    <label>增量包 SHA256</label><input id="vIncSha" value="${v.incremental_sha256||''}">
+    <label>状态</label><select id="vActive"><option value="1" ${v.is_active?'selected':''}>Active</option><option value="0" ${!v.is_active?'selected':''}>Inactive</option></select>
+    <label style="margin-top:8px"><input type="checkbox" id="vLatest" ${v.is_latest?'checked':''}> 设为最新版本</label>
+    <div class="btn-row"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveVersion('${v.version}')">Save</button></div>
+  `);
+}
+
+async function saveVersion(version) {
+  const body = {
+    version: version || document.getElementById('vVersion').value.trim(),
+    title: document.getElementById('vTitle').value.trim(),
+    date: document.getElementById('vDate').value.trim(),
+    release_notes: document.getElementById('vNotes').value,
+    windows_x64_url: document.getElementById('vWinUrl').value.trim(),
+    windows_x64_sha256: document.getElementById('vWinSha').value.trim(),
+    mac_arm_url: document.getElementById('vMacUrl').value.trim(),
+    linux_x64_url: document.getElementById('vLinuxUrl') ? document.getElementById('vLinuxUrl').value.trim() : '',
+    incremental_base_version: document.getElementById('vIncBase').value.trim(),
+    incremental_url: document.getElementById('vIncUrl').value.trim(),
+    incremental_sha256: document.getElementById('vIncSha').value.trim(),
+    is_active: document.getElementById('vActive').value === '1',
+  };
+  if (document.getElementById('vLatest')) body.is_latest = document.getElementById('vLatest').checked;
+  try {
+    if (version) await api('PUT', '/admin/versions/' + encodeURIComponent(version), body);
+    else await api('POST', '/admin/versions', body);
+    toast('Saved'); closeModal(); loadVersions();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function delVersion(version) {
+  if (!confirm('删除版本 "' + version + '"？')) return;
+  try { await api('DELETE', '/admin/versions/' + encodeURIComponent(version)); toast('Deleted'); loadVersions(); }
   catch(e) { toast(e.message, 'error'); }
 }
 
