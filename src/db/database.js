@@ -125,6 +125,19 @@ async function initDb(dbPath) {
     updated_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Analytics Events ──────────────────────────────────────────
+  db.exec(`CREATE TABLE IF NOT EXISTS analytics_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT DEFAULT '',
+    app_version TEXT DEFAULT '',
+    os_platform TEXT DEFAULT '',
+    os_arch TEXT DEFAULT '',
+    language TEXT DEFAULT '',
+    uuid TEXT DEFAULT '',
+    user_id TEXT DEFAULT '',
+    created_at INTEGER DEFAULT 0
+  )`);
+
   // ─── Indexes ───────────────────────────────────────────────────
   db.exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_logs(user_id)`);
@@ -134,7 +147,7 @@ async function initDb(dbPath) {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_future_user ON future_messages(user_id, is_delivered)`);
 
   // ─── Seed admin user ───────────────────────────────────────────
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@wulu-superagent.com';
+  const adminEmail = process.env.ADMIN_EMAIL || 'ai@ai.005656.xyz';
   const adminPass = process.env.ADMIN_PASSWORD || 'changeme';
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(adminEmail);
   if (!existing) {
