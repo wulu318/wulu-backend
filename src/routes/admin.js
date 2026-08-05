@@ -570,10 +570,66 @@ router.put('/versions/:version', (req, res) => {
 // ─── DELETE /api/admin/versions/:version ──────────────────────────
 router.delete('/versions/:version', (req, res) => {
   const db = getDb();
-  const existing = db.prepare('SELECT version FROM update_versions WHERE version = ?').get(req.params.version);
+  const existing = db.prepare('SELECT * FROM update_versions WHERE version = ?').get(req.params.version);
   if (!existing) return res.status(404).json({ error: 'Version not found' });
+
+  const wasLatest = existing.is_latest === 1;
   db.prepare('DELETE FROM update_versions WHERE version = ?').run(req.params.version);
+
+  // If the deleted version was marked latest, promote the newest remaining
+  // active version to latest.
+  if (wasLatest) {
+    const next = db.prepare(
+      'SELECT version FROM update_versions WHERE is_active = 1 ORDER BY version DESC LIMIT 1',
+    ).get();
+    if (next) {
+      db.prepare('UPDATE update_versions SET is_latest = 1 WHERE version = ?').run(next.version);
+    }
+  }
   res.json({ success: true });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Release Artifact Upload
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── POST /api/admin/upload ───────────────────────────────────────
+// Body: raw file bytes. Header X-File-Name: URL-encoded relative path
+// under the public/runtime directory, e.g. "releases/2026.8.1/WULU-Setup-x64.exe"
+router.post('/upload', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const fileNameRaw = req.headers['x-file-name'] || '';
+  const fileName = decodeURIComponent(fileNameRaw);
+  if (!fileName || fileName.includes('..') || path.isAbsolute(fileName)) {
+    return res.status(400).json({ error: 'Invalid file name' });
+  }
+
+  const publicDir = path.join(__dirname, '..', '..', 'public');
+  const runtimeDir = path.join(publicDir, 'runtime');
+  const targetDir = path.join(runtimeDir, path.dirname(fileName));
+  const targetPath = path.join(runtimeDir, fileName);
+
+  try {
+    fs.mkdirSync(targetDir, { recursive: true });
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      try {
+        const buf = Buffer.concat(chunks);
+        fs.writeFileSync(targetPath, buf);
+        const url = `https://ai.005656.xyz/runtime/${fileName.split(path.sep).join('/')}`;
+        res.json({ success: true, url, size: buf.length });
+      } catch (err) {
+        res.status(500).json({ error: `Write failed: ${err.message}` });
+      }
+    });
+    req.on('error', (err) => {
+      res.status(500).json({ error: `Stream error: ${err.message}` });
+    });
+  } catch (err) {
+    res.status(500).json({ error: `Mkdir failed: ${err.message}` });
+  }
 });
 
 module.exports = router;
