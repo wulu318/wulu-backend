@@ -277,6 +277,7 @@ router.get('/analytics/usage', (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
 // System Config
 // ═══════════════════════════════════════════════════════════════════
 
@@ -303,6 +304,176 @@ router.put('/config', (req, res) => {
   });
 
   insertMany(req.body);
+  res.json({ success: true });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Skill Store Management
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── GET /api/admin/skills ────────────────────────────────────────
+router.get('/skills', (_req, res) => {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM store_skills ORDER BY sort_order ASC').all();
+  res.json({ skills: rows });
+});
+
+// ─── POST /api/admin/skills ───────────────────────────────────────
+router.post('/skills', (req, res) => {
+  const db = getDb();
+  const nowTs = Math.floor(Date.now() / 1000);
+  const { id, name, name_zh, description_en, description_zh, tags, url, version, author, source_url, sort_order } = req.body;
+  if (!id || !name) return res.status(400).json({ error: 'id and name are required' });
+
+  const existing = db.prepare('SELECT id FROM store_skills WHERE id = ?').get(id);
+  if (existing) return res.status(409).json({ error: 'Skill id already exists' });
+
+  db.prepare(
+    `INSERT INTO store_skills (id, name, name_zh, description_en, description_zh, tags, url, version, author, source_url, sort_order, is_active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+  ).run(
+    id,
+    name || '',
+    name_zh || '',
+    description_en || '',
+    description_zh || '',
+    Array.isArray(tags) ? JSON.stringify(tags) : (tags || '[]'),
+    url || '',
+    version || '1.0.0',
+    author || 'WULU Team',
+    source_url || '',
+    sort_order || 0,
+    nowTs,
+    nowTs,
+  );
+  res.json({ success: true });
+});
+
+// ─── PUT /api/admin/skills/:id ────────────────────────────────────
+router.put('/skills/:id', (req, res) => {
+  const db = getDb();
+  const nowTs = Math.floor(Date.now() / 1000);
+  const { name, name_zh, description_en, description_zh, tags, url, version, author, source_url, sort_order, is_active } = req.body;
+  const existing = db.prepare('SELECT id FROM store_skills WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Skill not found' });
+
+  db.prepare(
+    `UPDATE store_skills SET name = ?, name_zh = ?, description_en = ?, description_zh = ?, tags = ?, url = ?, version = ?, author = ?, source_url = ?, sort_order = ?, is_active = ?, updated_at = ? WHERE id = ?`,
+  ).run(
+    name ?? '',
+    name_zh ?? '',
+    description_en ?? '',
+    description_zh ?? '',
+    Array.isArray(tags) ? JSON.stringify(tags) : (tags ?? '[]'),
+    url ?? '',
+    version ?? '1.0.0',
+    author ?? 'WULU Team',
+    source_url ?? '',
+    sort_order ?? 0,
+    is_active === undefined ? 1 : (is_active ? 1 : 0),
+    nowTs,
+    req.params.id,
+  );
+  res.json({ success: true });
+});
+
+// ─── DELETE /api/admin/skills/:id ─────────────────────────────────
+router.delete('/skills/:id', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT id FROM store_skills WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Skill not found' });
+  db.prepare('DELETE FROM store_skills WHERE id = ?').run(req.params.id);
+  res.json({ success: true });
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Kit Store Management
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── GET /api/admin/kits ──────────────────────────────────────────
+router.get('/kits', (_req, res) => {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM store_kits ORDER BY sort_order ASC').all();
+  res.json({ kits: rows });
+});
+
+// ─── POST /api/admin/kits ─────────────────────────────────────────
+router.post('/kits', (req, res) => {
+  const db = getDb();
+  const nowTs = Math.floor(Date.now() / 1000);
+  const { id, name, name_zh, description_en, description_zh, icon, author, version, download_count, try_asking, skills, bundle, bundle_sha256, bundle_size, mcp_servers, connectors, sort_order } = req.body;
+  if (!id || !name) return res.status(400).json({ error: 'id and name are required' });
+
+  const existing = db.prepare('SELECT id FROM store_kits WHERE id = ?').get(id);
+  if (existing) return res.status(409).json({ error: 'Kit id already exists' });
+
+  db.prepare(
+    `INSERT INTO store_kits (id, name, name_zh, description_en, description_zh, icon, author, version, download_count, try_asking, skills, bundle, bundle_sha256, bundle_size, mcp_servers, connectors, is_active, sort_order, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+  ).run(
+    id,
+    name || '',
+    name_zh || '',
+    description_en || '',
+    description_zh || '',
+    icon || '',
+    author || 'WULU Team',
+    version || '1.0.0',
+    String(download_count || '0'),
+    JSON.stringify(try_asking || []),
+    JSON.stringify(skills || []),
+    bundle || '',
+    bundle_sha256 || '',
+    bundle_size ? String(bundle_size) : '',
+    mcp_servers === null || mcp_servers === undefined ? 'null' : JSON.stringify(mcp_servers),
+    connectors === null || connectors === undefined ? 'null' : JSON.stringify(connectors),
+    sort_order || 0,
+    nowTs,
+    nowTs,
+  );
+  res.json({ success: true });
+});
+
+// ─── PUT /api/admin/kits/:id ──────────────────────────────────────
+router.put('/kits/:id', (req, res) => {
+  const db = getDb();
+  const nowTs = Math.floor(Date.now() / 1000);
+  const { name, name_zh, description_en, description_zh, icon, author, version, download_count, try_asking, skills, bundle, bundle_sha256, bundle_size, mcp_servers, connectors, is_active, sort_order } = req.body;
+  const existing = db.prepare('SELECT id FROM store_kits WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Kit not found' });
+
+  db.prepare(
+    `UPDATE store_kits SET name = ?, name_zh = ?, description_en = ?, description_zh = ?, icon = ?, author = ?, version = ?, download_count = ?, try_asking = ?, skills = ?, bundle = ?, bundle_sha256 = ?, bundle_size = ?, mcp_servers = ?, connectors = ?, is_active = ?, sort_order = ?, updated_at = ? WHERE id = ?`,
+  ).run(
+    name ?? '',
+    name_zh ?? '',
+    description_en ?? '',
+    description_zh ?? '',
+    icon ?? '',
+    author ?? 'WULU Team',
+    version ?? '1.0.0',
+    String(download_count ?? '0'),
+    JSON.stringify(try_asking ?? []),
+    JSON.stringify(skills ?? []),
+    bundle ?? '',
+    bundle_sha256 ?? '',
+    bundle_size ? String(bundle_size) : '',
+    mcp_servers === null || mcp_servers === undefined ? 'null' : JSON.stringify(mcp_servers),
+    connectors === null || connectors === undefined ? 'null' : JSON.stringify(connectors),
+    is_active === undefined ? 1 : (is_active ? 1 : 0),
+    sort_order ?? 0,
+    nowTs,
+    req.params.id,
+  );
+  res.json({ success: true });
+});
+
+// ─── DELETE /api/admin/kits/:id ───────────────────────────────────
+router.delete('/kits/:id', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT id FROM store_kits WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Kit not found' });
+  db.prepare('DELETE FROM store_kits WHERE id = ?').run(req.params.id);
   res.json({ success: true });
 });
 
