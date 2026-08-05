@@ -138,6 +138,48 @@ async function initDb(dbPath) {
     created_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Skill Store ───────────────────────────────────────────────
+  db.exec(`CREATE TABLE IF NOT EXISTS store_skills (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    name_zh TEXT DEFAULT '',
+    description_en TEXT DEFAULT '',
+    description_zh TEXT DEFAULT '',
+    tags TEXT DEFAULT '[]',
+    url TEXT DEFAULT '',
+    version TEXT DEFAULT '1.0.0',
+    author TEXT DEFAULT 'WULU Team',
+    source_url TEXT DEFAULT '',
+    sort_order INTEGER DEFAULT 0,
+    is_active INTEGER DEFAULT 1,
+    created_at INTEGER DEFAULT 0,
+    updated_at INTEGER DEFAULT 0
+  )`);
+
+  // ─── Kit Store ─────────────────────────────────────────────────
+  db.exec(`CREATE TABLE IF NOT EXISTS store_kits (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    name_zh TEXT DEFAULT '',
+    description_en TEXT DEFAULT '',
+    description_zh TEXT DEFAULT '',
+    icon TEXT DEFAULT '',
+    author TEXT DEFAULT 'WULU Team',
+    version TEXT DEFAULT '1.0.0',
+    download_count TEXT DEFAULT '0',
+    try_asking TEXT DEFAULT '[]',
+    skills TEXT DEFAULT '[]',
+    bundle TEXT DEFAULT '',
+    bundle_sha256 TEXT DEFAULT '',
+    bundle_size TEXT DEFAULT '',
+    mcp_servers TEXT DEFAULT 'null',
+    connectors TEXT DEFAULT 'null',
+    is_active INTEGER DEFAULT 1,
+    sort_order INTEGER DEFAULT 0,
+    created_at INTEGER DEFAULT 0,
+    updated_at INTEGER DEFAULT 0
+  )`);
+
   // ─── Indexes ───────────────────────────────────────────────────
   db.exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_logs(user_id)`);
@@ -170,6 +212,62 @@ async function initDb(dbPath) {
     ];
     for (const p of plans) insertPlan.run(...p);
     console.log('[DB] Seeded default plans: Free, Pro, Max');
+  }
+
+  // ─── Seed skill store ───────────────────────────────────────────
+  const skillCount = db.prepare('SELECT COUNT(*) as c FROM store_skills').get().c;
+  if (skillCount === 0) {
+    const nowTs = Math.floor(Date.now() / 1000);
+    const insertSkill = db.prepare(
+      `INSERT INTO store_skills (id, name, name_zh, description_en, description_zh, tags, url, version, author, source_url, sort_order, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+    );
+    const skills = [
+      ['web-search', 'Web Search', '网页搜索', 'Search the web for real-time information using multiple search engines.', '使用多个搜索引擎搜索实时网络信息。', '["search","web"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 0],
+      ['news-aggregator', 'News Aggregator', '新闻聚合', 'Fetch and analyze news from multiple sources including HN, GitHub, Product Hunt, and more.', '从多个来源（HN、GitHub、Product Hunt 等）获取和分析新闻。', '["news","search"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 1],
+      ['document-creator', 'Document Creator', '文档创建', 'Create professional documents including DOCX, PDF, and presentations with formatting and templates.', '创建专业文档，包括 DOCX、PDF 和演示文稿，支持格式化和模板。', '["document","productivity"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 2],
+      ['spreadsheet-analyst', 'Spreadsheet Analyst', '表格分析', 'Create, edit, and analyze spreadsheets with formulas, charts, and data visualization.', '创建、编辑和分析电子表格，支持公式、图表和数据可视化。', '["document","productivity","data"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 3],
+      ['diagram-drawing', 'Diagram Drawing', '图表绘制', 'Generate professional diagrams from natural language — flowcharts, architectures, mindmaps, and more.', '从自然语言生成专业图表——流程图、架构图、思维导图等。', '["visual","productivity"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 4],
+      ['infographic-designer', 'Infographic Designer', '信息图设计', 'Generate professional infographics with multiple layout types and visual styles.', '使用多种布局类型和视觉风格生成专业信息图。', '["visual","design"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 5],
+      ['deep-research', 'Deep Research', '深度研究', 'Conduct comprehensive multi-source research with citation tracking and structured reporting.', '进行多源综合研究，支持引用追踪和结构化报告。', '["research","search"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 6],
+      ['contract-review', 'Contract Review', '合同审查', 'Review contracts with structured issue annotations, risk assessment, and revision suggestions.', '审查合同，提供结构化问题标注、风险评估和修订建议。', '["legal","document"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 7],
+      ['scheduler', 'Scheduler', '定时任务', 'Create, manage, and run scheduled tasks with cron and one-time execution support.', '创建、管理和运行定时任务，支持 cron 和一次性执行。', '["automation","productivity"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 8],
+      ['canvas-design', 'Canvas Design', '画布设计', 'Create beautiful visual art, posters, and designs using AI image generation.', '使用 AI 图像生成创建精美的视觉艺术、海报和设计。', '["visual","design","creative"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 9],
+      ['pptx-creator', 'PPT Creator', 'PPT 创建', 'Create, edit, and manage PowerPoint presentations for reports, proposals, and courseware.', '创建、编辑和管理 PPT 演示文稿，用于汇报、提案和课件。', '["document","productivity","presentation"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 10],
+      ['memory-manager', 'Memory Manager', '记忆管理', 'Manage long-term memory — store preferences, recall past context, and review daily logs.', '管理长期记忆——存储偏好、回忆过往上下文、查看每日日志。', '["memory","productivity"]', '', '1.0.0', 'WULU Team', 'https://ai.005656.xyz', 11],
+    ];
+    for (const [id, name, nameZh, descEn, descZh, tags, url, version, author, sourceUrl, sortOrder] of skills) {
+      insertSkill.run(id, name, nameZh, descEn, descZh, tags, url, version, author, sourceUrl, sortOrder, nowTs, nowTs);
+    }
+    console.log(`[DB] Seeded ${skills.length} store skills`);
+  }
+
+  // ─── Seed kit store ─────────────────────────────────────────────
+  const kitCount = db.prepare('SELECT COUNT(*) as c FROM store_kits').get().c;
+  if (kitCount === 0) {
+    const nowTs = Math.floor(Date.now() / 1000);
+    const insertKit = db.prepare(
+      `INSERT INTO store_kits (id, name, name_zh, description_en, description_zh, icon, author, version, download_count, try_asking, skills, bundle, mcp_servers, connectors, is_active, sort_order, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+    );
+    const kits = [
+      ['wulu-productivity-pack', 'Productivity Pack', '效率套件', 'Essential productivity skills bundled together — document creation, spreadsheets, scheduling, and deep research.', '必备效率技能打包——文档创建、电子表格、定时任务和深度研究。', 'https://ai.005656.xyz/runtime/computer-use-kit.png', 'WULU Team', '1.0.0', '0',
+        '[{"en":"Create a project report in DOCX format","zh":"用 DOCX 格式创建项目报告"},{"en":"Analyze this Excel data and create a summary chart","zh":"分析这份 Excel 数据并创建汇总图表"},{"en":"Schedule a daily news briefing at 8 AM","zh":"设置每天早上8点的新闻简报定时任务"}]',
+        '[{"id":"document-creator","name":{"en":"Document Creator","zh":"文档创建"},"description":{"en":"Create DOCX/PDF documents","zh":"创建 DOCX/PDF 文档"}},{"id":"spreadsheet-analyst","name":{"en":"Spreadsheet Analyst","zh":"表格分析"},"description":{"en":"Analyze and create spreadsheets","zh":"分析和创建电子表格"}},{"id":"scheduler","name":{"en":"Scheduler","zh":"定时任务"},"description":{"en":"Manage scheduled tasks","zh":"管理定时任务"}},{"id":"deep-research","name":{"en":"Deep Research","zh":"深度研究"},"description":{"en":"Multi-source research","zh":"多源研究"}}]',
+        '', 'null', 'null', 0],
+      ['wulu-visual-pack', 'Visual Design Pack', '视觉设计套件', 'All visual creation tools in one kit — diagrams, infographics, presentations, and canvas art.', '所有视觉创作工具打包——图表、信息图、演示文稿和画布设计。', 'https://ai.005656.xyz/runtime/computer-use-kit.png', 'WULU Team', '1.0.0', '0',
+        '[{"en":"Draw a system architecture diagram","zh":"画一个系统架构图"},{"en":"Create an infographic about AI trends","zh":"创建一个关于 AI 趋势的信息图"},{"en":"Design a presentation for product launch","zh":"设计一个产品发布的演示文稿"}]',
+        '[{"id":"diagram-drawing","name":{"en":"Diagram Drawing","zh":"图表绘制"},"description":{"en":"Generate professional diagrams","zh":"生成专业图表"}},{"id":"infographic-designer","name":{"en":"Infographic Designer","zh":"信息图设计"},"description":{"en":"Design infographics","zh":"设计信息图"}},{"id":"pptx-creator","name":{"en":"PPT Creator","zh":"PPT 创建"},"description":{"en":"Create presentations","zh":"创建演示文稿"}},{"id":"canvas-design","name":{"en":"Canvas Design","zh":"画布设计"},"description":{"en":"Create visual art","zh":"创建视觉艺术"}}]',
+        '', 'null', 'null', 1],
+      ['wulu-analysis-pack', 'Analysis & Research Pack', '分析研究套件', 'Professional analysis toolkit — contract review, deep research, and memory management for complex tasks.', '专业分析工具包——合同审查、深度研究和记忆管理，应对复杂任务。', 'https://ai.005656.xyz/runtime/computer-use-kit.png', 'WULU Team', '1.0.0', '0',
+        '[{"en":"Review this contract for potential risks","zh":"审查这份合同的潜在风险"},{"en":"Research the latest trends in quantum computing","zh":"调研量子计算的最新趋势"},{"en":"Remember that I prefer concise summaries","zh":"记住我喜欢简洁的摘要"}]',
+        '[{"id":"contract-review","name":{"en":"Contract Review","zh":"合同审查"},"description":{"en":"Review contracts with risk analysis","zh":"审查合同并进行风险分析"}},{"id":"deep-research","name":{"en":"Deep Research","zh":"深度研究"},"description":{"en":"Multi-source research with citations","zh":"带引用的多源研究"}},{"id":"memory-manager","name":{"en":"Memory Manager","zh":"记忆管理"},"description":{"en":"Manage long-term memory","zh":"管理长期记忆"}},{"id":"web-search","name":{"en":"Web Search","zh":"网页搜索"},"description":{"en":"Search the web","zh":"搜索网络"}}]',
+        '', 'null', 'null', 2],
+    ];
+    for (const [id, name, nameZh, descEn, descZh, icon, author, version, downloadCount, tryAsking, skills, bundle, mcpServers, connectors, sortOrder] of kits) {
+      insertKit.run(id, name, nameZh, descEn, descZh, icon, author, version, downloadCount, tryAsking, skills, bundle, mcpServers, connectors, sortOrder, nowTs, nowTs);
+    }
+    console.log(`[DB] Seeded ${kits.length} store kits`);
   }
 
   console.log(`[DB] Initialized: ${dbPath}`);
