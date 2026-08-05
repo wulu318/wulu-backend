@@ -18,6 +18,8 @@ const adminRoutes = require('./routes/admin');
 const updateRoutes = require('./routes/update');
 const skillStoreRoutes = require('./routes/skill-store');
 const kitStoreRoutes = require('./routes/kit-store');
+const mcpStoreRoutes = require('./routes/mcp-store');
+const analyticsRoutes = require('./routes/analytics');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -67,6 +69,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/update', updateRoutes);
 app.use('/api/skill-store', skillStoreRoutes);
 app.use('/api/kit-store', kitStoreRoutes);
+app.use('/api/mcp-store', mcpStoreRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // ─── Error Handler ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
