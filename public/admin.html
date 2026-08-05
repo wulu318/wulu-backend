@@ -77,7 +77,7 @@ tr:hover td{background:rgba(255,215,0,.02)}
   <div class="login-box">
     <h1>WULU</h1>
     <p>SuperAgent Admin Console</p>
-    <input type="email" id="loginEmail" placeholder="admin@wulu-superagent.com" value="admin@wulu-superagent.com">
+    <input type="email" id="loginEmail" placeholder="ai@ai.005656.xyz" value="ai@ai.005656.xyz">
     <input type="password" id="loginPass" placeholder="Password" value="">
     <button id="loginBtn" onclick="doLogin()">LOGIN</button>
     <p style="margin-top:16px;font-size:11px;color:var(--text-dim)">WULU SuperAgent v1.0</p>
@@ -441,6 +441,51 @@ async function loadSystem() {
         </div>
       </div>
       <div class="card">
+        <h2>Client Resources</h2>
+        <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">Download URLs and checksums for the desktop client. The client fetches these at startup; changes take effect on next client launch.</p>
+        <div class="config-grid">
+          <div>
+            <label>Computer Use Runtime URL</label>
+            <input id="cfgRtUrl" value="${config.RUNTIME_COMPUTER_USE_URL||''}" placeholder="https://ai.005656.xyz/runtime/wulu-computer-use-runtime-win-x64-1.0.7.zip">
+          </div>
+          <div>
+            <label>Computer Use Runtime SHA256</label>
+            <input id="cfgRtSha" value="${config.RUNTIME_COMPUTER_USE_SHA256||''}" placeholder="sha256 hex">
+          </div>
+          <div>
+            <label>Computer Use Runtime Size (bytes)</label>
+            <input id="cfgRtSize" value="${config.RUNTIME_COMPUTER_USE_SIZE||''}" placeholder="556309">
+          </div>
+        </div>
+        <div class="config-grid">
+          <div>
+            <label>Computer Use Kit Bundle URL</label>
+            <input id="cfgBundleUrl" value="${config.KIT_BUNDLE_COMPUTER_USE_URL||''}" placeholder="https://ai.005656.xyz/runtime/wulu-computer-use-kit-bundle.zip">
+          </div>
+          <div>
+            <label>Computer Use Kit Bundle SHA256</label>
+            <input id="cfgBundleSha" value="${config.KIT_BUNDLE_COMPUTER_USE_SHA256||''}" placeholder="sha256 hex">
+          </div>
+          <div>
+            <label>Computer Use Kit Bundle Size (bytes)</label>
+            <input id="cfgBundleSize" value="${config.KIT_BUNDLE_COMPUTER_USE_SIZE||''}" placeholder="3496">
+          </div>
+        </div>
+        <div class="config-grid">
+          <div>
+            <label>Computer Use Kit Icon URL</label>
+            <input id="cfgCuIconUrl" value="${config.KIT_ICON_COMPUTER_USE_URL||''}" placeholder="https://ai.005656.xyz/runtime/computer-use-kit.png">
+          </div>
+          <div>
+            <label>Skin Kit Icon URL</label>
+            <input id="cfgSkinIconUrl" value="${config.SKIN_KIT_ICON_URL||''}" placeholder="https://ai.005656.xyz/runtime/skin-kit.png">
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <button class="btn-sm" style="padding:8px 16px" onclick="saveClientResourcesConfig()">Save Client Resources</button>
+        </div>
+      </div>
+      <div class="card">
         <h2>System Actions</h2>
         <p style="color:var(--text-dim);margin-bottom:16px;font-size:13px">Administrative operations for the WULU Backend.</p>
         <button class="btn-sm" style="padding:8px 16px;margin-right:8px" onclick="healthCheck()">Health Check</button>
@@ -459,6 +504,22 @@ async function saveConfig() {
       NEWAPI_API_KEY: document.getElementById('cfgNewApiKey').value,
     });
     toast('Configuration saved');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+async function saveClientResourcesConfig() {
+  try {
+    await api('PUT', '/admin/config', {
+      RUNTIME_COMPUTER_USE_URL: document.getElementById('cfgRtUrl').value,
+      RUNTIME_COMPUTER_USE_SHA256: document.getElementById('cfgRtSha').value,
+      RUNTIME_COMPUTER_USE_SIZE: document.getElementById('cfgRtSize').value,
+      KIT_BUNDLE_COMPUTER_USE_URL: document.getElementById('cfgBundleUrl').value,
+      KIT_BUNDLE_COMPUTER_USE_SHA256: document.getElementById('cfgBundleSha').value,
+      KIT_BUNDLE_COMPUTER_USE_SIZE: document.getElementById('cfgBundleSize').value,
+      KIT_ICON_COMPUTER_USE_URL: document.getElementById('cfgCuIconUrl').value,
+      SKIN_KIT_ICON_URL: document.getElementById('cfgSkinIconUrl').value,
+    });
+    toast('Client resources saved');
   } catch(e) { toast(e.message, 'error'); }
 }
 
