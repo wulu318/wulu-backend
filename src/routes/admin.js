@@ -477,4 +477,103 @@ router.delete('/kits/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// Update Version Management
+// ═══════════════════════════════════════════════════════════════════
+
+// ─── GET /api/admin/versions ──────────────────────────────────────
+router.get('/versions', (_req, res) => {
+  const db = getDb();
+  const rows = db.prepare('SELECT * FROM update_versions ORDER BY version DESC').all();
+  res.json({ versions: rows });
+});
+
+// ─── POST /api/admin/versions ─────────────────────────────────────
+router.post('/versions', (req, res) => {
+  const db = getDb();
+  const nowTs = Math.floor(Date.now() / 1000);
+  const v = req.body || {};
+  if (!v.version) return res.status(400).json({ error: 'version is required' });
+
+  const existing = db.prepare('SELECT version FROM update_versions WHERE version = ?').get(v.version);
+  if (existing) return res.status(409).json({ error: 'Version already exists' });
+
+  const isLatest = v.is_latest ? 1 : 0;
+  if (isLatest) {
+    db.prepare('UPDATE update_versions SET is_latest = 0 WHERE is_latest = 1').run();
+  }
+
+  db.prepare(
+    `INSERT INTO update_versions (version, title, release_notes, date, is_latest, is_active,
+       windows_x64_url, windows_x64_size, windows_x64_sha256,
+       mac_arm_url, mac_arm_size, mac_arm_sha256,
+       mac_intel_url, mac_intel_size, mac_intel_sha256,
+       linux_x64_url, linux_x64_size, linux_x64_sha256,
+       linux_arm64_url, linux_arm64_size, linux_arm64_sha256,
+       incremental_base_version, incremental_url, incremental_size, incremental_sha256,
+       created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    v.version, v.title || '', v.release_notes || '', v.date || '', isLatest,
+    v.is_active === undefined ? 1 : (v.is_active ? 1 : 0),
+    v.windows_x64_url || '', v.windows_x64_size || '', v.windows_x64_sha256 || '',
+    v.mac_arm_url || '', v.mac_arm_size || '', v.mac_arm_sha256 || '',
+    v.mac_intel_url || '', v.mac_intel_size || '', v.mac_intel_sha256 || '',
+    v.linux_x64_url || '', v.linux_x64_size || '', v.linux_x64_sha256 || '',
+    v.linux_arm64_url || '', v.linux_arm64_size || '', v.linux_arm64_sha256 || '',
+    v.incremental_base_version || '', v.incremental_url || '', v.incremental_size || '', v.incremental_sha256 || '',
+    nowTs, nowTs,
+  );
+  res.json({ success: true });
+});
+
+// ─── PUT /api/admin/versions/:version ─────────────────────────────
+router.put('/versions/:version', (req, res) => {
+  const db = getDb();
+  const nowTs = Math.floor(Date.now() / 1000);
+  const v = req.body || {};
+  const existing = db.prepare('SELECT * FROM update_versions WHERE version = ?').get(req.params.version);
+  if (!existing) return res.status(404).json({ error: 'Version not found' });
+
+  // Preserve existing flags when the field is not provided
+  const isLatest = v.is_latest === undefined ? existing.is_latest : (v.is_latest ? 1 : 0);
+  const isActive = v.is_active === undefined ? existing.is_active : (v.is_active ? 1 : 0);
+
+  if (isLatest && !existing.is_latest) {
+    db.prepare('UPDATE update_versions SET is_latest = 0 WHERE is_latest = 1').run();
+  }
+
+  db.prepare(
+    `UPDATE update_versions SET
+       title = ?, release_notes = ?, date = ?, is_latest = ?, is_active = ?,
+       windows_x64_url = ?, windows_x64_size = ?, windows_x64_sha256 = ?,
+       mac_arm_url = ?, mac_arm_size = ?, mac_arm_sha256 = ?,
+       mac_intel_url = ?, mac_intel_size = ?, mac_intel_sha256 = ?,
+       linux_x64_url = ?, linux_x64_size = ?, linux_x64_sha256 = ?,
+       linux_arm64_url = ?, linux_arm64_size = ?, linux_arm64_sha256 = ?,
+       incremental_base_version = ?, incremental_url = ?, incremental_size = ?, incremental_sha256 = ?,
+       updated_at = ?
+     WHERE version = ?`,
+  ).run(
+    v.title ?? existing.title, v.release_notes ?? existing.release_notes, v.date ?? existing.date, isLatest, isActive,
+    v.windows_x64_url ?? existing.windows_x64_url, v.windows_x64_size ?? existing.windows_x64_size, v.windows_x64_sha256 ?? existing.windows_x64_sha256,
+    v.mac_arm_url ?? existing.mac_arm_url, v.mac_arm_size ?? existing.mac_arm_size, v.mac_arm_sha256 ?? existing.mac_arm_sha256,
+    v.mac_intel_url ?? existing.mac_intel_url, v.mac_intel_size ?? existing.mac_intel_size, v.mac_intel_sha256 ?? existing.mac_intel_sha256,
+    v.linux_x64_url ?? existing.linux_x64_url, v.linux_x64_size ?? existing.linux_x64_size, v.linux_x64_sha256 ?? existing.linux_x64_sha256,
+    v.linux_arm64_url ?? existing.linux_arm64_url, v.linux_arm64_size ?? existing.linux_arm64_size, v.linux_arm64_sha256 ?? existing.linux_arm64_sha256,
+    v.incremental_base_version ?? existing.incremental_base_version, v.incremental_url ?? existing.incremental_url, v.incremental_size ?? existing.incremental_size, v.incremental_sha256 ?? existing.incremental_sha256,
+    nowTs, req.params.version,
+  );
+  res.json({ success: true });
+});
+
+// ─── DELETE /api/admin/versions/:version ──────────────────────────
+router.delete('/versions/:version', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT version FROM update_versions WHERE version = ?').get(req.params.version);
+  if (!existing) return res.status(404).json({ error: 'Version not found' });
+  db.prepare('DELETE FROM update_versions WHERE version = ?').run(req.params.version);
+  res.json({ success: true });
+});
+
 module.exports = router;
