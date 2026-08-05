@@ -180,6 +180,39 @@ async function initDb(dbPath) {
     updated_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Update Versions ───────────────────────────────────────────
+  db.exec(`CREATE TABLE IF NOT EXISTS update_versions (
+    version TEXT PRIMARY KEY,
+    title TEXT DEFAULT '',
+    release_notes TEXT DEFAULT '',
+    date TEXT DEFAULT '',
+    is_latest INTEGER DEFAULT 0,
+    is_active INTEGER DEFAULT 1,
+    -- Full package URLs per platform
+    windows_x64_url TEXT DEFAULT '',
+    windows_x64_size TEXT DEFAULT '',
+    windows_x64_sha256 TEXT DEFAULT '',
+    mac_arm_url TEXT DEFAULT '',
+    mac_arm_size TEXT DEFAULT '',
+    mac_arm_sha256 TEXT DEFAULT '',
+    mac_intel_url TEXT DEFAULT '',
+    mac_intel_size TEXT DEFAULT '',
+    mac_intel_sha256 TEXT DEFAULT '',
+    linux_x64_url TEXT DEFAULT '',
+    linux_x64_size TEXT DEFAULT '',
+    linux_x64_sha256 TEXT DEFAULT '',
+    linux_arm64_url TEXT DEFAULT '',
+    linux_arm64_size TEXT DEFAULT '',
+    linux_arm64_sha256 TEXT DEFAULT '',
+    -- Incremental patch from a base version to this version
+    incremental_base_version TEXT DEFAULT '',
+    incremental_url TEXT DEFAULT '',
+    incremental_size TEXT DEFAULT '',
+    incremental_sha256 TEXT DEFAULT '',
+    created_at INTEGER DEFAULT 0,
+    updated_at INTEGER DEFAULT 0
+  )`);
+
   // ─── Indexes ───────────────────────────────────────────────────
   db.exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_logs(user_id)`);
@@ -268,6 +301,28 @@ async function initDb(dbPath) {
       insertKit.run(id, name, nameZh, descEn, descZh, icon, author, version, downloadCount, tryAsking, skills, bundle, mcpServers, connectors, sortOrder, nowTs, nowTs);
     }
     console.log(`[DB] Seeded ${kits.length} store kits`);
+  }
+
+  // ─── Seed update versions ───────────────────────────────────────
+  const updateVersionCount = db.prepare('SELECT COUNT(*) as c FROM update_versions').get().c;
+  if (updateVersionCount === 0) {
+    const nowTs = Math.floor(Date.now() / 1000);
+    db.prepare(
+      `INSERT INTO update_versions (version, title, release_notes, date, is_latest, is_active, windows_x64_url, windows_x64_size, mac_arm_url, mac_arm_size, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      '2026.7.23',
+      'WULU SuperAgent v2026.7.23',
+      '初始公开版本。\n- 全场景 AI 办公助手\n- IM 机器人接入（微信/钉钉/飞书/企微/QQ/Telegram/Discord）\n- 定时任务与自动化\n- 长期记忆系统\n- 多平台支持（Windows/macOS/Linux）',
+      '2026-08-04',
+      'https://github.com/wulu318/wulu-superagent/releases/download/v2026.7.23/WULU-Setup-x64-2026.7.23-official.exe',
+      '262226143',
+      'https://github.com/wulu318/wulu-superagent/releases/download/v2026.7.23/wulu-darwin-arm64-2026.7.23-official.dmg',
+      '332410789',
+      nowTs,
+      nowTs,
+    );
+    console.log('[DB] Seeded initial update version 2026.7.23');
   }
 
   console.log(`[DB] Initialized: ${dbPath}`);
