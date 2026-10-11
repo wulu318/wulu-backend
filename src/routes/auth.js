@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const { getDb } = require('../db/database');
 const { authMiddleware, generateToken } = require('../middleware/auth');
+const { consumeVerificationCode } = require('../services/verification');
 
 const router = express.Router();
 
@@ -179,7 +180,7 @@ router.post('/exchange', (req, res) => {
 
 // ─── POST /api/auth/register ─────────────────────────────────────
 router.post('/register', (req, res) => {
-  const { email, password, displayName } = req.body;
+  const { email, password, displayName, verificationCode } = req.body;
 
   // Validate email
   if (!validateEmail(email)) {
@@ -199,6 +200,10 @@ router.post('/register', (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
   if (existing) return res.status(409).json({ error: 'This email is already registered' });
+
+  if (typeof verificationCode !== 'string' || !consumeVerificationCode(cleanEmail, verificationCode)) {
+    return res.status(400).json({ error: 'A valid email verification code is required' });
+  }
 
   const id = uuidv4();
   const hash = bcrypt.hashSync(password, 12);
@@ -323,7 +328,7 @@ router.post('/portal-login', (req, res) => {
 // ─── POST /api/auth/portal-register ──────────────────────────────
 // Portal Web page registration: creates user and returns authCode.
 router.post('/portal-register', (req, res) => {
-  const { email, password, displayName, redirect_uri, state } = req.body;
+  const { email, password, displayName, verificationCode, redirect_uri, state } = req.body;
 
   if (!validateEmail(email)) {
     return res.status(400).json({ error: 'Please enter a valid email address' });
@@ -340,6 +345,10 @@ router.post('/portal-register', (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
   if (existing) return res.status(409).json({ error: 'This email is already registered' });
+
+  if (typeof verificationCode !== 'string' || !consumeVerificationCode(cleanEmail, verificationCode)) {
+    return res.status(400).json({ error: 'A valid email verification code is required' });
+  }
 
   const id = uuidv4();
   const hash = bcrypt.hashSync(password, 12);

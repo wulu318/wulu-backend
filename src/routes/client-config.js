@@ -4,6 +4,13 @@ const express = require('express');
 const { getDb } = require('../db/database');
 
 const router = express.Router();
+const readSecretConfig = (key) => {
+  try {
+    const row = getDb().prepare('SELECT value FROM system_config WHERE key = ?').get(key);
+    if (row?.value) return row.value;
+  } catch (_) {}
+  return process.env[key] || '';
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // Public Client Config — read by the WULU desktop client at startup.
@@ -48,6 +55,23 @@ router.get('/', (_req, res) => {
     // DB unavailable; return empty config so clients keep their defaults.
   }
   res.json({ code: 0, data: { config } });
+});
+
+// Reports feature readiness without exposing provider URLs or credentials.
+router.get('/features', (_req, res) => {
+  const mediaBase = readSecretConfig('MEDIA_SERVICE_BASE_URL');
+  const asrUrl = readSecretConfig('ASR_REALTIME_SESSION_URL');
+  const asrKey = readSecretConfig('ASR_REALTIME_API_KEY');
+  res.json({
+    code: 0,
+    data: {
+      imageGeneration: { configured: Boolean(mediaBase) },
+      videoGeneration: { configured: Boolean(mediaBase) },
+      realtimeAsr: { configured: Boolean(asrUrl && asrKey) },
+      speech: { configured: Boolean(readSecretConfig('NEWAPI_BASE_URL') && readSecretConfig('NEWAPI_API_KEY')) },
+      transcription: { configured: Boolean(readSecretConfig('NEWAPI_BASE_URL') && readSecretConfig('NEWAPI_API_KEY')) },
+    },
+  });
 });
 
 module.exports = router;

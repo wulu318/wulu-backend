@@ -125,6 +125,14 @@ async function initDb(dbPath) {
     updated_at INTEGER DEFAULT 0
   )`);
 
+  db.exec(`CREATE TABLE IF NOT EXISTS email_verification_codes (
+    email TEXT PRIMARY KEY,
+    code_hash TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  )`);
+
   // ─── Analytics Events ──────────────────────────────────────────
   db.exec(`CREATE TABLE IF NOT EXISTS analytics_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -267,6 +267,13 @@ function renderRegister() {
         <input type="email" id="regEmail" placeholder="you@example.com" autocomplete="email">
       </div>
       <div class="form-group">
+        <label for="regVerificationCode">Email verification code</label>
+        <div style="display:flex;gap:8px">
+          <input style="flex:1;min-width:0" type="text" id="regVerificationCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6-digit code">
+          <button class="btn" type="button" id="sendVerificationBtn" onclick="sendVerificationCode()">Send code</button>
+        </div>
+      </div>
+      <div class="form-group">
         <label for="regPassword">Password</label>
         <input type="password" id="regPassword" placeholder="At least 8 chars, letters + numbers" autocomplete="new-password" oninput="checkPwStrength(this.value)">
         <div class="pw-strength"><div class="pw-strength-bar" id="pwBar"></div></div>
@@ -281,10 +288,41 @@ function renderRegister() {
     </div>
   </div>`;
 
-  ['regName','regEmail','regPassword','regPassword2'].forEach(id => {
+  ['regName','regEmail','regVerificationCode','regPassword','regPassword2'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
   });
+}
+
+async function sendVerificationCode() {
+  const email = document.getElementById('regEmail').value.trim();
+  const errEl = document.getElementById('regError');
+  const btn = document.getElementById('sendVerificationBtn');
+  errEl.classList.remove('show');
+  if (!email) {
+    errEl.textContent = 'Enter your email address first';
+    errEl.classList.add('show');
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  try {
+    const data = await apiFetch('/verification/send', { method: 'POST', body: JSON.stringify({ email }) });
+    if (data.code) {
+      errEl.textContent = `Development verification code: ${data.code}`;
+      errEl.classList.add('show');
+    } else {
+      const sucEl = document.getElementById('regSuccess');
+      sucEl.textContent = 'Verification code sent. It expires in 10 minutes.';
+      sucEl.classList.add('show');
+    }
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send code';
+  }
 }
 
 function checkPwStrength(pw) {
@@ -317,6 +355,7 @@ async function doRegister() {
   try {
     const displayName = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
+    const verificationCode = document.getElementById('regVerificationCode').value.trim();
     const password = document.getElementById('regPassword').value;
     const password2 = document.getElementById('regPassword2').value;
 
@@ -324,7 +363,7 @@ async function doRegister() {
 
     const data = await apiFetch('/portal-register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, displayName, redirect_uri: REDIRECT_URI, state: STATE }),
+      body: JSON.stringify({ email, password, displayName, verificationCode, redirect_uri: REDIRECT_URI, state: STATE }),
     });
 
     if (data.redirectUrl && REDIRECT_URI) {
@@ -353,39 +392,37 @@ async function doRegister() {
 }
 
 // 鈹€鈹€鈹€ Pricing 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
-function renderPricing() {
+async function renderPricing() {
   app.innerHTML = `
   <div class="container">
     <div class="auth-card" style="text-align:center">
       <h1>Choose Your Plan</h1>
       <p class="subtitle">Start free, upgrade when you need more</p>
     </div>
-    <div class="pricing-cards">
-      <div class="pricing-card">
-        <h2>Free</h2>
-        <div class="price">$0 <span>/ month</span></div>
-        <ul>
-          <li>100,000 tokens monthly quota</li>
-          <li>Access to basic models</li>
-          <li>Community support</li>
-          <li>5 scheduled tasks</li>
-        </ul>
-        <button class="btn btn-outline" onclick="navigate('/register')">Get Started</button>
-      </div>
-      <div class="pricing-card featured">
-        <h2>Pro</h2>
-        <div class="price">$9.99 <span>/ month</span></div>
-        <ul>
-          <li>2,000,000 tokens monthly quota</li>
-          <li>Access to all models</li>
-          <li>Priority support</li>
-          <li>Unlimited scheduled tasks</li>
-          <li>Advanced memory system</li>
-        </ul>
-        <button class="btn btn-primary" onclick="navigate('/register')">Upgrade to Pro</button>
-      </div>
-    </div>
+    <div class="pricing-cards" id="pricingCards"><div class="auth-card">Loading plans…</div></div>
   </div>`;
+
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+  const formatQuota = (value) => Number(value || 0).toLocaleString();
+  try {
+    const response = await fetch('/api/plans');
+    if (!response.ok) throw new Error('Could not load plans');
+    const plans = await response.json();
+    if (!Array.isArray(plans) || plans.length === 0) throw new Error('No active plans are available');
+    document.getElementById('pricingCards').innerHTML = plans.map((plan, index) => {
+      const quota = `${formatQuota(plan.quota_monthly)} monthly quota`;
+      const models = Array.isArray(plan.modelAccess) ? `Models: ${plan.modelAccess.join(', ') || 'All models'}` : '';
+      const features = Object.entries(plan.features || {}).map(([key, value]) => `${key.replace(/_/g, ' ')}: ${typeof value === 'object' ? JSON.stringify(value) : value}`).slice(0, 8);
+      const paid = Number(plan.price_monthly) > 0 || Number(plan.price_yearly) > 0;
+      const price = Number(plan.price_monthly) > 0 ? `$${Number(plan.price_monthly).toFixed(2)} <span>/ month</span>` : '$0 <span>/ month</span>';
+      const button = paid
+        ? '<button class="btn btn-outline" disabled>Paid checkout is not configured</button>'
+        : '<button class="btn btn-primary" onclick="navigate(\'/register\')">Get Started</button>';
+      return `<div class="pricing-card ${index === 1 ? 'featured' : ''}"><h2>${escapeHtml(plan.name)}</h2><div class="price">${price}</div><p>${escapeHtml(plan.description)}</p><ul><li>${quota}</li><li>${escapeHtml(models)}</li>${features.map((feature) => `<li>${escapeHtml(feature)}</li>`).join('')}</ul>${button}</div>`;
+    }).join('');
+  } catch (error) {
+    document.getElementById('pricingCards').innerHTML = `<div class="auth-card">${escapeHtml(error.message || 'Could not load plans')}</div>`;
+  }
 }
 
 // 鈹€鈹€鈹€ Profile 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
@@ -400,7 +437,7 @@ async function renderProfile() {
       <div class="profile-card">
         <h2>Account</h2>
         <div class="profile-row"><span class="label">Email</span><span class="value">${esc(data.email)}</span></div>
-        <div class="profile-row"><span class="label">Name</span><span class="value">${esc(data.displayName || '鈥?)}</span></div>
+        <div class="profile-row"><span class="label">Name</span><span class="value">${esc(data.displayName || '—')}</span></div>
         <div class="profile-row"><span class="label">Plan</span><span class="value" style="color:var(--gold)">${esc(data.planName || 'Free')}</span></div>
         <div class="profile-row"><span class="label">Quota</span><span class="value">${formatNum(data.quotaRemaining)} / ${formatNum(data.quotaTotal)}</span></div>
         <div class="quota-bar"><div class="quota-bar-fill" style="width:${quotaPct}%"></div></div>
@@ -487,7 +524,7 @@ function esc(s) {
 }
 
 function formatNum(n) {
-  if (!n && n !== 0) return '鈥?;
+  if (!n && n !== 0) return '—';
   return Number(n).toLocaleString();
 }
 

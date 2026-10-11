@@ -10,11 +10,11 @@ const router = express.Router();
 router.get('/', (req, res) => {
   const db = getDb();
   const plans = db.prepare('SELECT * FROM plans WHERE is_active = 1 ORDER BY sort_order').all();
-  res.json(plans.map(p => ({
+  res.json({ code: 0, data: plans.map(p => ({
     ...p,
     features: JSON.parse(p.features || '{}'),
     modelAccess: JSON.parse(p.model_access || '[]'),
-  })));
+  })) });
 });
 
 router.get('/my-subscription', authMiddleware, (req, res) => {
@@ -27,7 +27,21 @@ router.get('/my-subscription', authMiddleware, (req, res) => {
     ORDER BY s.created_at DESC LIMIT 1
   `).get(req.user.sub);
 
-  if (!sub) return res.json({ active: false });
+  if (!sub) {
+    const user = db.prepare('SELECT plan_id FROM users WHERE id = ?').get(req.user.sub);
+    const plan = user?.plan_id ? db.prepare('SELECT * FROM plans WHERE id = ? AND is_active = 1').get(user.plan_id) : null;
+    if (!plan) return res.json({ active: false, planName: 'Free', paymentConfigured: false });
+    return res.json({
+      active: true,
+      planId: plan.id,
+      planName: plan.name,
+      features: JSON.parse(plan.features || '{}'),
+      modelAccess: JSON.parse(plan.model_access || '[]'),
+      quotaMonthly: plan.quota_monthly,
+      expiresAt: null,
+      paymentConfigured: false,
+    });
+  }
 
   if (!sub.plan_name) {
     return res.json({
@@ -51,6 +65,7 @@ router.get('/my-subscription', authMiddleware, (req, res) => {
     quotaMonthly: sub.quota_monthly,
     startedAt: sub.started_at,
     expiresAt: sub.expires_at,
+    paymentConfigured: false,
   });
 });
 
@@ -68,6 +83,10 @@ router.post('/subscribe', authMiddleware, (req, res) => {
   const db = getDb();
   const plan = db.prepare('SELECT * FROM plans WHERE id = ? AND is_active = 1').get(planId);
   if (!plan) return res.status(404).json({ error: 'Plan not found' });
+
+  if (plan.price_monthly > 0 || plan.price_yearly > 0) {
+    return res.status(503).json({ error: 'Paid plan checkout is not configured. Contact the administrator.' });
+  }
 
   const existing = db.prepare('SELECT * FROM subscriptions WHERE user_id = ? AND status = ?').get(req.user.sub, 'active');
   if (existing) {

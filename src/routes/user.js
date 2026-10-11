@@ -20,6 +20,8 @@ router.get('/profile', (req, res) => {
   const subscription = db.prepare('SELECT * FROM subscriptions WHERE user_id = ? AND status = ?').get(user.id, 'active');
 
   res.json({
+    code: 0,
+    data: {
     id: user.id,
     email: user.email,
     displayName: user.display_name,
@@ -29,6 +31,7 @@ router.get('/profile', (req, res) => {
     subscription: subscription ? { id: subscription.id, status: subscription.status, expiresAt: subscription.expires_at } : null,
     quota: { remaining: user.quota_remaining, total: user.quota_total },
     createdAt: user.created_at,
+    },
   });
 });
 
@@ -37,7 +40,7 @@ router.put('/profile', (req, res) => {
   const db = getDb();
   db.prepare('UPDATE users SET display_name = ?, avatar_url = ?, updated_at = ? WHERE id = ?')
     .run(displayName || '', avatarUrl || '', Math.floor(Date.now() / 1000), req.user.sub);
-  res.json({ success: true });
+  res.json({ code: 0, data: { success: true } });
 });
 
 router.get('/quota', (req, res) => {
@@ -46,9 +49,12 @@ router.get('/quota', (req, res) => {
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   res.json({
+    code: 0,
+    data: {
     remaining: user.quota_remaining,
     total: user.quota_total,
     percentage: user.quota_total > 0 ? Math.round((user.quota_remaining / user.quota_total) * 100) : 0,
+    },
   });
 });
 
@@ -84,7 +90,37 @@ router.get('/usage', (req, res) => {
     ORDER BY total_tokens DESC
   `).all(req.user.sub, sinceTs);
 
-  res.json({ period, daily: usage, models: modelBreakdown });
+  const featureBreakdown = db.prepare(`
+    SELECT request_type, COUNT(*) as request_count,
+      SUM(total_tokens) as total_tokens, AVG(latency_ms) as average_latency_ms
+    FROM usage_logs
+    WHERE user_id = ? AND created_at >= ?
+    GROUP BY request_type ORDER BY request_count DESC
+  `).all(req.user.sub, sinceTs);
+
+  res.json({ code: 0, data: { period, daily: usage, models: modelBreakdown, features: featureBreakdown } });
+});
+
+// Profile summary consumed by the desktop account panel.
+router.get('/profile-summary', (req, res) => {
+  const db = getDb();
+  const user = db.prepare('SELECT id, email, display_name, role, plan_id, quota_remaining, quota_total, created_at FROM users WHERE id = ?').get(req.user.sub);
+  if (!user) return res.status(404).json({ code: 1, message: 'User not found' });
+  const plan = user.plan_id ? db.prepare('SELECT name FROM plans WHERE id = ?').get(user.plan_id) : null;
+  res.json({ code: 0, data: {
+    id: user.id,
+    email: user.email,
+    displayName: user.display_name,
+    role: user.role,
+    planId: user.plan_id,
+    planName: plan?.name || 'Free',
+    quota: {
+      remaining: user.quota_remaining,
+      total: user.quota_total,
+      percentage: user.quota_total > 0 ? Math.round((user.quota_remaining / user.quota_total) * 100) : 0,
+    },
+    createdAt: user.created_at,
+  } });
 });
 
 module.exports = router;

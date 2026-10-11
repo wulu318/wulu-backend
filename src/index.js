@@ -21,6 +21,8 @@ const kitStoreRoutes = require('./routes/kit-store');
 const mcpStoreRoutes = require('./routes/mcp-store');
 const analyticsRoutes = require('./routes/analytics');
 const clientConfigRoutes = require('./routes/client-config');
+const verificationRoutes = require('./routes/verification');
+const mediaRoutes = require('./routes/media');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -61,10 +63,13 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ─── API Routes ──────────────────────────────────────────────────
+app.use('/api/auth/verification', authLimiter, verificationRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/v1', modelProxyRoutes);   // /api/v1/chat/completions etc.
+app.use('/api/media', mediaRoutes);
+app.use('/api/asr', mediaRoutes);
 app.use('/api/memory', memoryRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/update', updateRoutes);

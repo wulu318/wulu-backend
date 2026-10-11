@@ -22,11 +22,11 @@ router.get('/entries', (req, res) => {
   params.push(Number(limit), Number(offset));
 
   const entries = db.prepare(sql).all(...params);
-  res.json(entries.map(e => ({
+  res.json({ code: 0, data: entries.map(e => ({
     ...e,
     tags: JSON.parse(e.tags || '[]'),
     metadata: JSON.parse(e.metadata || '{}'),
-  })));
+  })) });
 });
 
 router.post('/entries', (req, res) => {
@@ -40,7 +40,7 @@ router.post('/entries', (req, res) => {
   db.prepare(`INSERT INTO memory_entries (id, user_id, layer, content, tags, metadata, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(id, req.user.sub, layer, content, JSON.stringify(tags), JSON.stringify(metadata), now, now);
 
-  res.status(201).json({ id, layer, tags, createdAt: now });
+  res.status(201).json({ code: 0, data: { id, layer, tags, createdAt: now } });
 });
 
 router.put('/entries/:id', (req, res) => {
@@ -54,14 +54,14 @@ router.put('/entries/:id', (req, res) => {
   db.prepare(`UPDATE memory_entries SET content = ?, layer = ?, tags = ?, metadata = ?, updated_at = ? WHERE id = ?`)
     .run(content || existing.content, layer || existing.layer, JSON.stringify(tags ?? JSON.parse(existing.tags || '[]')), JSON.stringify(metadata ?? JSON.parse(existing.metadata || '{}')), now, req.params.id);
 
-  res.json({ success: true });
+  res.json({ code: 0, data: { success: true } });
 });
 
 router.delete('/entries/:id', (req, res) => {
   const db = getDb();
   const result = db.prepare('DELETE FROM memory_entries WHERE id = ? AND user_id = ?').run(req.params.id, req.user.sub);
   if (result.changes === 0) return res.status(404).json({ error: 'Entry not found' });
-  res.json({ success: true });
+  res.json({ code: 0, data: { success: true } });
 });
 
 router.get('/tags', (req, res) => {
@@ -83,7 +83,7 @@ router.get('/tags', (req, res) => {
     } catch {}
   }
 
-  res.json({ tags: Array.from(tagSet) });
+  res.json({ code: 0, data: { tags: Array.from(tagSet) } });
 });
 
 router.post('/search', (req, res) => {
@@ -130,7 +130,7 @@ router.post('/search', (req, res) => {
   }
 
   const results = entries.filter(e => resultIds.has(e.id)).slice(0, limit);
-  res.json({ results, searchedTags: tags, depth });
+  res.json({ code: 0, data: { results, searchedTags: tags, depth } });
 });
 
 router.get('/diary', (req, res) => {
@@ -144,7 +144,7 @@ router.get('/diary', (req, res) => {
   params.push(Number(limit));
 
   const entries = db.prepare(sql).all(...params);
-  res.json(entries.map(e => ({ ...e, tags: JSON.parse(e.tags || '[]') })));
+  res.json({ code: 0, data: entries.map(e => ({ ...e, tags: JSON.parse(e.tags || '[]') })) });
 });
 
 router.post('/diary', (req, res) => {
@@ -164,7 +164,7 @@ router.post('/diary', (req, res) => {
       VALUES (?, ?, 'diary-index', ?, ?, ?, ?, ?)`).run(memId, req.user.sub, `[${date}] ${title || 'Diary'}: ${content.substring(0, 200)}`, JSON.stringify(tags), JSON.stringify({ diaryId: id, date }), now, now);
   }
 
-  res.status(201).json({ id, date });
+  res.status(201).json({ code: 0, data: { id, date } });
 });
 
 router.get('/future-messages', (req, res) => {
@@ -172,7 +172,7 @@ router.get('/future-messages', (req, res) => {
   const now = Math.floor(Date.now() / 1000);
   const messages = db.prepare('SELECT * FROM future_messages WHERE user_id = ? AND is_delivered = 0 AND deliver_after <= ? ORDER BY deliver_after')
     .all(req.user.sub, now);
-  res.json(messages);
+  res.json({ code: 0, data: messages });
 });
 
 router.post('/future-messages', (req, res) => {
@@ -198,7 +198,7 @@ router.post('/future-messages', (req, res) => {
   db.prepare('INSERT INTO future_messages (id, user_id, deliver_after, content, created_at) VALUES (?, ?, ?, ?, ?)')
     .run(id, req.user.sub, deliverAfter, content, now);
 
-  res.status(201).json({ id, deliverAfter });
+  res.status(201).json({ code: 0, data: { id, deliverAfter } });
 });
 
 router.post('/future-messages/:id/delivered', (req, res) => {
@@ -206,7 +206,7 @@ router.post('/future-messages/:id/delivered', (req, res) => {
   const now = Math.floor(Date.now() / 1000);
   db.prepare('UPDATE future_messages SET is_delivered = 1, delivered_at = ? WHERE id = ? AND user_id = ?')
     .run(now, req.params.id, req.user.sub);
-  res.json({ success: true });
+  res.json({ code: 0, data: { success: true } });
 });
 
 module.exports = router;
