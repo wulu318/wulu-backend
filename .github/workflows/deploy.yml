@@ -1,0 +1,35 @@
+name: Deploy WULU backend
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: wulu-backend-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.WULU_DEPLOY_SSH_KEY }}
+
+      - name: Deploy on server
+        env:
+          DEPLOY_HOST: ${{ secrets.WULU_DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.WULU_DEPLOY_PORT || '22' }}
+          DEPLOY_USER: ${{ secrets.WULU_DEPLOY_USER || 'root' }}
+        run: |
+          set -euo pipefail
+          test -n "$DEPLOY_HOST"
+          ssh -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST" \
+            'curl -fsSL https://raw.githubusercontent.com/wulu318/wulu-backend/main/scripts/deploy.sh | bash'
+
+      - name: Verify public health endpoint
+        env:
+          HEALTH_URL: ${{ secrets.WULU_HEALTH_URL || 'https://ai.005656.xyz/api/health' }}
+        run: curl --fail --silent --show-error --retry 10 --retry-delay 3 "$HEALTH_URL"
