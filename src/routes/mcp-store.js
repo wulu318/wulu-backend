@@ -207,7 +207,11 @@ router.get('/', (_req, res) => {
     code: 0,
     data: {
       value: {
-        servers: MCP_SERVERS,
+        servers: MCP_SERVERS.concat(require('../services/community').published('connector').map(item => ({
+          ...item.connector, id: `community-${item.id}`, name: item.name,
+          description_zh: item.description, description_en: item.description,
+          defaultArgs: item.connector.defaultArgs || [], command: item.connector.command || '',
+        }))),
         categories: MCP_CATEGORIES,
       },
     },

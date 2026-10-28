@@ -65,7 +65,13 @@ router.get('/', (_req, res) => {
     code: 0,
     data: {
       value: {
-        kits,
+        kits: kits.concat(require('../services/community').published('expert').map(item => ({
+          id: `community-${item.id}`, name: { zh: item.name, en: item.name },
+          description: { zh: item.description, en: item.description }, author: item.author,
+          version: item.version, icon: '', downloadCount: '0', tryAsking: [],
+          skills: { bundle: item.bundleUrl, bundleSha256: item.bundleSha256, bundleSizeBytes: item.bundleSize, list: item.skills },
+          mcpServers: null, connectors: null,
+        }))),
       },
     },
   };

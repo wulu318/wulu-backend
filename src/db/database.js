@@ -334,6 +334,7 @@ async function initDb(dbPath) {
   }
 
   console.log(`[DB] Initialized: ${dbPath}`);
+  require('../services/community').initCommunity(db);
   return db;
 }
 

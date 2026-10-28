@@ -117,7 +117,7 @@ const SOURCE = hashParams.get('source') || '';
 
 // 鈹€鈹€鈹€ Router 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
 function getHash() {
-  const hash = window.location.hash.slice(1) || '/login';
+  const hash = (window.location.hash.slice(1) || '/login').split('?')[0];
   return hash.startsWith('/') ? hash : '/' + hash;
 }
 
@@ -129,7 +129,7 @@ function render() {
   const path = getHash();
   // Update nav
   const isLoggedIn = !!localStorage.getItem('portal_token');
-  if (isLoggedIn && path === '/login') { navigate('/profile'); return; }
+  if (isLoggedIn && path === '/login' && !REDIRECT_URI) { navigate('/profile'); return; }
   if (!isLoggedIn && path === '/profile') { navigate('/login'); return; }
 
   let navHtml = '';
@@ -141,6 +141,10 @@ function render() {
     else navHtml += ` <a href="#/login">Login</a>`;
   }
   nav.innerHTML = navHtml;
+  const creatorLink = document.createElement('a');
+  creatorLink.href = '/community/';
+  creatorLink.textContent = ' 创作者中心';
+  nav.append(creatorLink);
 
   switch (path) {
     case '/login': renderLogin(); break;
@@ -221,6 +225,8 @@ async function doLogin() {
       method: 'POST',
       body: JSON.stringify({ email, password, redirect_uri: REDIRECT_URI, state: STATE }),
     });
+
+    if (data.token) localStorage.setItem('portal_token', data.token);
 
     if (data.redirectUrl && REDIRECT_URI) {
       // Electron OAuth: redirect to local callback server which will
@@ -366,6 +372,11 @@ async function doRegister() {
       body: JSON.stringify({ email, password, displayName, verificationCode, redirect_uri: REDIRECT_URI, state: STATE }),
     });
 
+    if (data.token) {
+      localStorage.setItem('portal_token', data.token);
+      if (!REDIRECT_URI) { navigate('/profile'); return; }
+    }
+
     if (data.redirectUrl && REDIRECT_URI) {
       window.location.href = data.redirectUrl;
       return;
@@ -407,7 +418,8 @@ async function renderPricing() {
   try {
     const response = await fetch('/api/plans');
     if (!response.ok) throw new Error('Could not load plans');
-    const plans = await response.json();
+    const envelope = await response.json();
+    const plans = envelope.data ?? envelope;
     if (!Array.isArray(plans) || plans.length === 0) throw new Error('No active plans are available');
     document.getElementById('pricingCards').innerHTML = plans.map((plan, index) => {
       const quota = `${formatQuota(plan.quota_monthly)} monthly quota`;

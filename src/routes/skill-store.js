@@ -36,7 +36,11 @@ router.get('/', (_req, res) => {
     code: 0,
     data: {
       value: {
-        marketplace,
+        marketplace: marketplace.concat(require('../services/community').published('skill').map(item => ({
+          id: `community-${item.id}`, name: item.name, description: { zh: item.description, en: item.description },
+          tags: item.tags, url: item.bundleUrl, version: item.version,
+          source: { from: item.author, author: item.author, url: item.bundleUrl },
+        }))),
         marketTags: [
           { id: 'search', en: 'Search', zh: '搜索' },
           { id: 'web', en: 'Web', zh: '网络' },

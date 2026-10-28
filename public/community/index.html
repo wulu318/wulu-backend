@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>伍陆创作者中心</title>
+<link rel="stylesheet" href="/community/style.css"><script src="/community/app.js" defer></script></head>
+<body><main>
+<header><a href="/portal#/profile">伍陆超级智能体</a><h1 id="title">创作者中心</h1><p>分享技能、连接器和专家套件，审核通过后所有用户都可在应用市场安装。</p></header>
+<p id="notice" role="status"></p>
+<section id="login"><h2>登录伍陆账号</h2><form id="loginForm"><label>邮箱<input id="email" type="email" required autocomplete="username"></label><label>密码<input id="password" type="password" required autocomplete="current-password"></label><button>登录</button><a href="/portal#/register">注册账号</a></form></section>
+<section id="creator" hidden><h2>提交作品</h2><form id="submitForm">
+<label>类型<select id="kind"><option value="skill">Skill 技能</option><option value="connector">MCP 连接器</option><option value="expert">专家套件</option></select></label>
+<label>名称<input id="name" maxlength="80" required></label><label>简介<textarea id="description" maxlength="4000" required></textarea></label>
+<div class="row"><label>版本<input id="version" value="1.0.0" required></label><label>许可协议<input id="license" value="MIT" maxlength="80" required></label></div>
+<label>标签（逗号分隔）<input id="tags" placeholder="办公, 文档, 自动化"></label>
+<label id="bundleField">上传 ZIP（20 MiB 以内，须包含 SKILL.md）<input id="bundle" type="file" accept=".zip,application/zip"></label>
+<label id="connectorField" hidden>连接器模板（仅填写所需密钥名称，不能填写真实密钥）<textarea id="connector" rows="8"></textarea></label>
+<label id="expertField" hidden>套件内的技能列表<textarea id="skills" rows="6"></textarea></label>
+<p>ZIP 内容会提供给审核员检查；请确保有权分享，不要上传账号密码、私钥或个人文件。审核通过前不会公开下载。</p>
+<button id="submitButton">提交审核</button><button type="button" id="cancelEdit" hidden>取消编辑</button></form></section>
+<section id="itemsSection" hidden><h2 id="itemsTitle">我的作品</h2><button id="refresh" type="button">刷新列表</button><label id="reviewFilter" hidden>审核状态<select id="statusFilter"><option value="">全部</option><option value="pending">待审核</option><option value="approved">已通过</option><option value="rejected">已退回</option><option value="withdrawn">已下架</option></select></label><div id="items"></div><div id="pagination" hidden><button id="previous">上一页</button><span id="pageLabel"></span><button id="next">下一页</button></div></section>
+</main></body></html>

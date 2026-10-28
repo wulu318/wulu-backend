@@ -23,6 +23,9 @@ router.get('/profile', (req, res) => {
     code: 0,
     data: {
     id: user.id,
+    yid: user.id,
+    userId: user.id,
+    nickname: user.display_name || user.email,
     email: user.email,
     displayName: user.display_name,
     avatarUrl: user.avatar_url,
@@ -109,6 +112,14 @@ router.get('/profile-summary', (req, res) => {
   const plan = user.plan_id ? db.prepare('SELECT name FROM plans WHERE id = ?').get(user.plan_id) : null;
   res.json({ code: 0, data: {
     id: user.id,
+    nickname: user.display_name || user.email,
+    avatarUrl: null,
+    totalCreditsRemaining: user.quota_remaining,
+    creditItems: [{
+      type: plan?.name && plan.name !== 'Free' ? 'subscription' : 'free',
+      label: plan?.name || 'Free', labelEn: plan?.name || 'Free',
+      creditsRemaining: user.quota_remaining, expiresAt: null,
+    }],
     email: user.email,
     displayName: user.display_name,
     role: user.role,

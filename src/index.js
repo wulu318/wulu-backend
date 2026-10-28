@@ -26,6 +26,7 @@ const mediaRoutes = require('./routes/media');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
+app.set('trust proxy', 'loopback');
 
 // ─── Security Middleware ───────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -64,7 +65,10 @@ app.get('/api/health', (_req, res) => {
 
 // ─── API Routes ──────────────────────────────────────────────────
 app.use('/api/auth/verification', authLimiter, verificationRoutes);
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', (req, res, next) => {
+  if (['/login', '/register', '/portal-login', '/portal-register', '/change-password'].includes(req.path)) return authLimiter(req, res, next);
+  next();
+}, authRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/plans', planRoutes);
 app.use('/api/v1', modelProxyRoutes);   // /api/v1/chat/completions etc.
@@ -78,6 +82,7 @@ app.use('/api/kit-store', kitStoreRoutes);
 app.use('/api/mcp-store', mcpStoreRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/config', clientConfigRoutes);
+app.use('/api/community', require('./routes/community'));
 
 // ─── Error Handler ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {

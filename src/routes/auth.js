@@ -35,6 +35,17 @@ function sanitizeString(str, maxLen = 255) {
   return str.trim().slice(0, maxLen);
 }
 
+function validCallback(value) {
+  if (!value) return true;
+  if (typeof value !== 'string') return false;
+  try {
+    const url = new URL(value);
+    if (url.username || url.password) return false;
+    if (url.protocol === 'wulu:') return url.hostname === 'auth' && url.pathname === '/callback';
+    return url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) && url.pathname === '/auth/callback';
+  } catch { return false; }
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // Brute-force Protection
 // ═══════════════════════════════════════════════════════════════════
@@ -75,7 +86,7 @@ setInterval(() => {
   for (const [ip, entry] of loginAttempts.entries()) {
     if (entry.lockedUntil && now >= entry.lockedUntil) loginAttempts.delete(ip);
   }
-}, 10 * 60 * 1000);
+}, 10 * 60 * 1000).unref();
 
 // ═══════════════════════════════════════════════════════════════════
 // Auth Code Store (for OAuth browser flow)
@@ -88,7 +99,7 @@ function generateAuthCode(userId) {
   const code = crypto.randomBytes(32).toString('hex');
   authCodeStore.set(code, { userId, createdAt: Date.now() });
   // Auto-cleanup
-  setTimeout(() => authCodeStore.delete(code), AUTH_CODE_TTL_MS);
+  setTimeout(() => authCodeStore.delete(code), AUTH_CODE_TTL_MS).unref();
   return code;
 }
 
@@ -109,7 +120,7 @@ setInterval(() => {
   for (const [code, entry] of authCodeStore.entries()) {
     if (now - entry.createdAt > AUTH_CODE_TTL_MS) authCodeStore.delete(code);
   }
-}, 60 * 1000);
+}, 60 * 1000).unref();
 
 // ═══════════════════════════════════════════════════════════════════
 // Auth Routes
@@ -159,6 +170,9 @@ router.post('/exchange', (req, res) => {
       refreshToken,
       user: {
         id: user.id,
+        yid: user.id,
+        userId: user.id,
+        nickname: user.display_name || user.email,
         email: user.email,
         displayName: user.display_name,
         avatarUrl: user.avatar_url,
@@ -282,6 +296,7 @@ router.post('/portal-login', (req, res) => {
   }
 
   const { email, password, redirect_uri, state } = req.body;
+  if (!validCallback(redirect_uri)) return res.status(400).json({ error: 'Invalid login callback address' });
   if (!email || !password) return res.status(400).json({ error: 'email and password required' });
 
   const cleanEmail = email.trim().toLowerCase();
@@ -315,6 +330,7 @@ router.post('/portal-login', (req, res) => {
   res.json({
     success: true,
     code: authCode,
+    token: generateToken(user),
     redirectUrl,
     user: {
       id: user.id,
@@ -329,6 +345,7 @@ router.post('/portal-login', (req, res) => {
 // Portal Web page registration: creates user and returns authCode.
 router.post('/portal-register', (req, res) => {
   const { email, password, displayName, verificationCode, redirect_uri, state } = req.body;
+  if (!validCallback(redirect_uri)) return res.status(400).json({ error: 'Invalid login callback address' });
 
   if (!validateEmail(email)) {
     return res.status(400).json({ error: 'Please enter a valid email address' });
@@ -370,6 +387,7 @@ router.post('/portal-register', (req, res) => {
   res.status(201).json({
     success: true,
     code: authCode,
+    token: generateToken({ id, email: cleanEmail, role: 'user', display_name: cleanDisplayName }),
     redirectUrl,
     user: { id, email: cleanEmail, displayName: cleanDisplayName, role: 'user' },
   });
