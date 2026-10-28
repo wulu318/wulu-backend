@@ -71,6 +71,7 @@ function normalizeSubmission(body) {
       description: text(skill.description, 'skill description', 1000),
     }));
     for (const skill of payload.skills) if (!/^[a-zA-Z0-9_-]+$/.test(skill.id)) throw new Error('Invalid bundled skill ID');
+    if (new Set(payload.skills.map(skill => skill.id)).size !== payload.skills.length) throw new Error('Duplicate bundled skill IDs');
   }
   return payload;
 }

@@ -94,6 +94,7 @@ test('creator submission, private upload, independent review, immutable publicat
   assert.equal((await call(`/api/community/review/${expert.id}`, 'reviewer', 'POST', approve(1))).status, 200);
   const kits = (await (await call('/api/kit-store')).json()).data.value.kits;
   assert.equal(kits.find(s => s.id === `community-${expert.id}`).skills.list[0].id, 'my-skill');
+  assert.equal((await call('/api/community/submissions', 'author', 'POST', { ...common, kind: 'expert', uploadId: upload.id, skills: [{ id: 'unknown-skill', name: 'Sample' }] })).status, 400);
   db.prepare("UPDATE users SET role = 'user' WHERE id = 'reviewer'").run();
   assert.equal((await call('/api/community/review', 'reviewer')).status, 403);
   db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(require('bcryptjs').hashSync('Testpass123', 4), 'author');

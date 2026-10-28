@@ -66,8 +66,21 @@ function validateUpload(kind, uploadId, ownerId, payload) {
   if (kind === Kind.Skill && JSON.parse(upload.inspection).files.filter(file => /(^|\/)SKILL\.md$/.test(file.name)).length !== 1) throw new Error('Submit one SKILL.md per skill; use an expert kit for multiple skills');
   if (kind === Kind.Expert) {
     const { files } = JSON.parse(upload.inspection);
+    const paths = new Set(files.map(file => file.name));
+    const topDirectories = [...new Set(files.filter(file => file.name.includes('/')).map(file => file.name.split('/')[0]))];
+    const sourceRoot = topDirectories.length === 1 ? `${topDirectories[0]}/` : '';
+    let available = [];
+    if (paths.has(`${sourceRoot}SKILL.md`)) available = [sourceRoot.slice(0, -1)];
+    else {
+      for (const prefix of [`${sourceRoot}skills/`, `${sourceRoot}SKILLs/`, sourceRoot]) {
+        available = files.map(file => file.name.startsWith(prefix) ? file.name.slice(prefix.length) : '')
+          .filter(name => /^[^/]+\/SKILL\.md$/.test(name)).map(name => name.split('/')[0]);
+        if (available.length) break;
+      }
+    }
+    if (!available.length || available.length !== payload.skills.length) throw new Error('Bundle layout must match the complete expert skill list');
     for (const skill of payload.skills) {
-      if (!files.some(file => file.name === `${skill.id}/SKILL.md` || file.name.endsWith(`/${skill.id}/SKILL.md`))) throw new Error(`Missing ${skill.id}/SKILL.md in bundle`);
+      if (!available.includes(skill.id)) throw new Error(`Missing ${skill.id}/SKILL.md in bundle`);
     }
   }
   return uploadId;
