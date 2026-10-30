@@ -49,7 +49,7 @@ function normalizeSubmission(body) {
       transportType: c.transportType,
       category: ['search', 'browser', 'developer', 'productivity'].includes(c.category) ? c.category : 'productivity',
       requiredEnvKeys: Array.isArray(c.requiredEnvKeys) ? c.requiredEnvKeys.map(key => {
-        if (typeof key !== 'string' || !/^[A-Z][A-Z0-9_]{0,79}$/.test(key)) throw new Error('Invalid environment key name');
+        if (typeof key !== 'string' || !/^[a-zA-Z_][a-zA-Z0-9_]{0,79}$/.test(key)) throw new Error('Invalid environment key name');
         return key;
       }).slice(0, 20) : [],
     };

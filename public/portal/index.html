@@ -141,10 +141,6 @@ function render() {
     else navHtml += ` <a href="#/login">Login</a>`;
   }
   nav.innerHTML = navHtml;
-  const creatorLink = document.createElement('a');
-  creatorLink.href = '/community/';
-  creatorLink.textContent = ' 创作者中心';
-  nav.append(creatorLink);
 
   switch (path) {
     case '/login': renderLogin(); break;
