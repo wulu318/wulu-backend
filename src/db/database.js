@@ -221,6 +221,11 @@ async function initDb(dbPath) {
     updated_at INTEGER DEFAULT 0
   )`);
 
+  // Additive migration preserves existing update records and user data.
+  if (!db.prepare('PRAGMA table_info(update_versions)').all().some(column => column.name === 'incremental_platform')) {
+    db.exec("ALTER TABLE update_versions ADD COLUMN incremental_platform TEXT DEFAULT ''");
+  }
+
   // ─── Indexes ───────────────────────────────────────────────────
   db.exec(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_usage_user ON usage_logs(user_id)`);

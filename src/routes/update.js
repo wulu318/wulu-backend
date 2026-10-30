@@ -45,7 +45,7 @@ function getVersionRow(version) {
   return db.prepare('SELECT * FROM update_versions WHERE version = ?').get(version) || null;
 }
 
-function buildValue(row, currentVersion) {
+function buildValue(row, currentVersion, platform, arch) {
   const value = {
     version: row.version,
     date: row.date || '',
@@ -102,11 +102,14 @@ function buildValue(row, currentVersion) {
   // matches the requesting client's current version.
   if (
     row.incremental_base_version
+    && row.incremental_platform === 'win32-x64'
+    && platform === 'win32' && arch === 'x64'
     && row.incremental_url
     && currentVersion
     && compareVersions(currentVersion, row.incremental_base_version) === 0
   ) {
     value.incremental = {
+      platform: row.incremental_platform,
       baseVersion: row.incremental_base_version,
       url: row.incremental_url,
       size: row.incremental_size ? Number(row.incremental_size) : undefined,
@@ -125,7 +128,7 @@ router.get('/check', (req, res) => {
     if (!row) {
       return res.json({ code: 0, data: { value: null } });
     }
-    const value = buildValue(row, currentVersion);
+    const value = buildValue(row, currentVersion, req.query.platform, req.query.arch);
     res.json({ code: 0, data: { value } });
   } catch (err) {
     console.error('[Update] check error:', err.message);
@@ -141,7 +144,7 @@ router.get('/check-manual', (req, res) => {
     if (!row) {
       return res.json({ code: 0, data: { value: null } });
     }
-    const value = buildValue(row, currentVersion);
+    const value = buildValue(row, currentVersion, req.query.platform, req.query.arch);
     // Manual checks include the version catalog (multiple versions)
     const db = getDb();
     const versions = db.prepare(

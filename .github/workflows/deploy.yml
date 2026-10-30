@@ -27,7 +27,7 @@ jobs:
           set -euo pipefail
           test -n "$DEPLOY_HOST"
           ssh -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST" \
-            'curl -fsSL https://raw.githubusercontent.com/wulu318/wulu-backend/main/scripts/deploy.sh | bash'
+            'curl -fsSL https://raw.githubusercontent.com/wulu318/wulu-backend/main/scripts/deploy-existing.sh | bash'
 
       - name: Verify public health endpoint
         env:

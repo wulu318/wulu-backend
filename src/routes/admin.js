@@ -510,9 +510,9 @@ router.post('/versions', (req, res) => {
        mac_intel_url, mac_intel_size, mac_intel_sha256,
        linux_x64_url, linux_x64_size, linux_x64_sha256,
        linux_arm64_url, linux_arm64_size, linux_arm64_sha256,
-       incremental_base_version, incremental_url, incremental_size, incremental_sha256,
+       incremental_base_version, incremental_url, incremental_size, incremental_sha256, incremental_platform,
        created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     v.version, v.title || '', v.release_notes || '', v.date || '', isLatest,
     v.is_active === undefined ? 1 : (v.is_active ? 1 : 0),
@@ -521,7 +521,7 @@ router.post('/versions', (req, res) => {
     v.mac_intel_url || '', v.mac_intel_size || '', v.mac_intel_sha256 || '',
     v.linux_x64_url || '', v.linux_x64_size || '', v.linux_x64_sha256 || '',
     v.linux_arm64_url || '', v.linux_arm64_size || '', v.linux_arm64_sha256 || '',
-    v.incremental_base_version || '', v.incremental_url || '', v.incremental_size || '', v.incremental_sha256 || '',
+    v.incremental_base_version || '', v.incremental_url || '', v.incremental_size || '', v.incremental_sha256 || '', v.incremental_platform || '',
     nowTs, nowTs,
   );
   res.json({ success: true });
@@ -551,7 +551,7 @@ router.put('/versions/:version', (req, res) => {
        mac_intel_url = ?, mac_intel_size = ?, mac_intel_sha256 = ?,
        linux_x64_url = ?, linux_x64_size = ?, linux_x64_sha256 = ?,
        linux_arm64_url = ?, linux_arm64_size = ?, linux_arm64_sha256 = ?,
-       incremental_base_version = ?, incremental_url = ?, incremental_size = ?, incremental_sha256 = ?,
+       incremental_base_version = ?, incremental_url = ?, incremental_size = ?, incremental_sha256 = ?, incremental_platform = ?,
        updated_at = ?
      WHERE version = ?`,
   ).run(
@@ -561,7 +561,7 @@ router.put('/versions/:version', (req, res) => {
     v.mac_intel_url ?? existing.mac_intel_url, v.mac_intel_size ?? existing.mac_intel_size, v.mac_intel_sha256 ?? existing.mac_intel_sha256,
     v.linux_x64_url ?? existing.linux_x64_url, v.linux_x64_size ?? existing.linux_x64_size, v.linux_x64_sha256 ?? existing.linux_x64_sha256,
     v.linux_arm64_url ?? existing.linux_arm64_url, v.linux_arm64_size ?? existing.linux_arm64_size, v.linux_arm64_sha256 ?? existing.linux_arm64_sha256,
-    v.incremental_base_version ?? existing.incremental_base_version, v.incremental_url ?? existing.incremental_url, v.incremental_size ?? existing.incremental_size, v.incremental_sha256 ?? existing.incremental_sha256,
+    v.incremental_base_version ?? existing.incremental_base_version, v.incremental_url ?? existing.incremental_url, v.incremental_size ?? existing.incremental_size, v.incremental_sha256 ?? existing.incremental_sha256, v.incremental_platform ?? existing.incremental_platform,
     nowTs, req.params.version,
   );
   res.json({ success: true });

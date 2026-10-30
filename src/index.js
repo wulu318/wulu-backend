@@ -26,6 +26,8 @@ const mediaRoutes = require('./routes/media');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
+let deployedCommit = '';
+try { deployedCommit = require('fs').readFileSync(path.join(__dirname, '..', 'REVISION'), 'utf8').trim(); } catch { /* Development checkout */ }
 app.set('trust proxy', 'loopback');
 
 // ─── Security Middleware ───────────────────────────────────────────
@@ -60,7 +62,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // ─── Health Check ────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', version: '1.0.0', timestamp: Date.now() });
+  res.json({ status: 'ok', version: require('../package.json').version, commit: deployedCommit, updateProtocol: 2, timestamp: Date.now() });
 });
 
 // ─── API Routes ──────────────────────────────────────────────────
