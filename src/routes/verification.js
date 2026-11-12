@@ -4,6 +4,7 @@ const express = require('express');
 const crypto = require('crypto');
 const { getDb } = require('../db/database');
 const { consumeVerificationCode } = require('../services/verification');
+const { getJwtSecret } = require('../config/secrets');
 
 const router = express.Router();
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -11,7 +12,7 @@ const CODE_TTL_SECONDS = 10 * 60;
 const SEND_INTERVAL_SECONDS = 60;
 
 function hashCode(email, code) {
-  return crypto.createHash('sha256').update(`${email}:${code}:${process.env.JWT_SECRET || 'dev-secret'}`).digest('hex');
+  return crypto.createHash('sha256').update(`${email}:${code}:${getJwtSecret()}`).digest('hex');
 }
 
 router.post('/send', (req, res) => {

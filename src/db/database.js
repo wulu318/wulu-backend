@@ -221,7 +221,12 @@ async function initDb(dbPath) {
     updated_at INTEGER DEFAULT 0
   )`);
 
-  // Additive migration preserves existing update records and user data.
+  // Additive migration: record what was actually charged, separate from reported usage.
+if (!db.prepare('PRAGMA table_info(usage_logs)').all().some(column => column.name === 'charged_tokens')) {
+  db.exec('ALTER TABLE usage_logs ADD COLUMN charged_tokens INTEGER DEFAULT 0');
+}
+
+// Additive migration preserves existing update records and user data.
   if (!db.prepare('PRAGMA table_info(update_versions)').all().some(column => column.name === 'incremental_platform')) {
     db.exec("ALTER TABLE update_versions ADD COLUMN incremental_platform TEXT DEFAULT ''");
   }

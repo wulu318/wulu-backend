@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const { initDb } = require('./db/database');
+const { assertSecretsConfigured } = require('./config/secrets');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const planRoutes = require('./routes/plan');
@@ -95,6 +96,7 @@ app.use((err, _req, res, _next) => {
 
 // ─── Bootstrap ──────────────────────────────────────────────────
 async function main() {
+  assertSecretsConfigured();
   const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '..', 'data', 'wulu.db');
   await initDb(dbPath);
   app.listen(PORT, () => {
