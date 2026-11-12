@@ -2,6 +2,7 @@
 
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../db/database');
+const { getJwtSecret } = require('../config/secrets');
 
 function expireSubscriptions(userId) {
   const db = getDb();
@@ -33,8 +34,7 @@ function authMiddleware(req, res, next) {
   }
   const token = header.slice(7);
   try {
-    const secret = process.env.JWT_SECRET || 'dev-secret';
-    const decoded = jwt.verify(token, secret);
+    const decoded = jwt.verify(token, getJwtSecret());
     req.user = decoded;
     expireSubscriptions(decoded.sub);
     next();
@@ -57,7 +57,7 @@ function requireRole(...roles) {
 }
 
 function generateToken(user, expiresIn) {
-  const secret = process.env.JWT_SECRET || 'dev-secret';
+  const secret = getJwtSecret();
   const exp = expiresIn || process.env.JWT_EXPIRES_IN || '7d';
   return jwt.sign(
     { sub: user.id, email: user.email, role: user.role, displayName: user.display_name },

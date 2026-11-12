@@ -3,6 +3,7 @@
 const express = require('express');
 const { getDb } = require('../db/database');
 const { authMiddleware } = require('../middleware/auth');
+const { chargeQuota, resolveChargeTokens } = require('../services/billing');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -51,7 +52,7 @@ async function proxyRequest(req, res) {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.sub);
   if (!user || !user.is_active) return res.status(403).json({ error: 'Account inactive' });
 
-  // Check quota
+  // Check quota (pre-check only; the authoritative deduction is atomic in chargeQuota)
   if (user.quota_remaining <= 0) {
     return res.status(429).json({ error: 'Quota exhausted. Please upgrade your plan.' });
   }
@@ -86,8 +87,10 @@ async function proxyRequest(req, res) {
 
   const isStream = req.body?.stream === true;
 
+  let requestBytes = 0;
+  let responseBytes = 0;
   try {
-    const fetch = (await import('node-fetch')).default;
+    // Node 24 built-in fetch; node-fetch is not a declared dependency.
     const isMultipart = MULTIPART_PATHS.has(path) && req.is('multipart/form-data');
     const upstreamHeaders = { ...headers };
     let upstreamBody;
@@ -127,6 +130,7 @@ async function proxyRequest(req, res) {
     } else {
       upstreamBody = JSON.stringify(req.body);
     }
+    requestBytes = typeof upstreamBody === 'string' ? Buffer.byteLength(upstreamBody) : Number(req.headers['content-length'] || 0);
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: upstreamHeaders,
@@ -146,28 +150,35 @@ async function proxyRequest(req, res) {
       res.setHeader('Connection', 'keep-alive');
 
       let totalContent = '';
+      let settled = false;
+      // Charge exactly once per stream: on normal end, upstream error, or client disconnect.
+      const settle = () => {
+        if (settled) return;
+        settled = true;
+        const usageMatch = totalContent.match(/"usage":\s*\{[^}]*"prompt_tokens":\s*(\d+)[^}]*"completion_tokens":\s*(\d+)[^}]*"total_tokens":\s*(\d+)/);
+        const pt = usageMatch ? parseInt(usageMatch[1], 10) : 0;
+        const ct = usageMatch ? parseInt(usageMatch[2], 10) : 0;
+        const tt = usageMatch ? parseInt(usageMatch[3], 10) : 0;
+        recordUsage(db, user.id, reqModel || 'unknown', pt, ct, tt, Date.now() - startTime, true, requestType(path), { requestBytes, responseBytes });
+      };
       response.body.on('data', (chunk) => {
-        const str = chunk.toString();
-        totalContent += str;
+        responseBytes += chunk.length;
+        totalContent += chunk.toString();
         res.write(chunk);
       });
 
       response.body.on('end', () => {
         res.end();
-        // Parse token usage from stream
-        const usageMatch = totalContent.match(/"usage":\s*\{[^}]*"prompt_tokens":\s*(\d+)[^}]*"completion_tokens":\s*(\d+)[^}]*"total_tokens":\s*(\d+)/);
-        if (usageMatch) {
-          const pt = parseInt(usageMatch[1], 10);
-          const ct = parseInt(usageMatch[2], 10);
-          const tt = parseInt(usageMatch[3], 10);
-          recordUsage(db, user.id, reqModel || 'unknown', pt, ct, tt, Date.now() - startTime, true, requestType(path));
-        }
+        settle();
       });
 
       response.body.on('error', (err) => {
         console.error('[Proxy] Stream error:', err.message);
         res.end();
+        settle();
       });
+
+      res.on('close', settle);
 
       return;
     }
@@ -177,18 +188,21 @@ async function proxyRequest(req, res) {
     if (isBinaryAudio) {
       res.setHeader('Content-Type', response.headers.get('content-type'));
       const audio = Buffer.from(await response.arrayBuffer());
+      responseBytes = audio.length;
       res.send(audio);
-      recordUsage(db, user.id, model, 0, 0, 0, Date.now() - startTime, false, requestType(path));
+      recordUsage(db, user.id, model, 0, 0, 0, Date.now() - startTime, false, requestType(path), { requestBytes, responseBytes });
       return;
     }
-    const data = await response.json();
+    const raw = await response.text();
+    responseBytes = Buffer.byteLength(raw);
+    const data = JSON.parse(raw);
     res.json(data);
 
     // Record usage
     const usage = data.usage;
     recordUsage(db, user.id, reqModel || data.model || 'unknown',
       usage?.prompt_tokens || 0, usage?.completion_tokens || 0, usage?.total_tokens || 0,
-      Date.now() - startTime, false, requestType(path));
+      Date.now() - startTime, false, requestType(path), { requestBytes, responseBytes });
   } catch (err) {
     console.error('[Proxy] Error:', err.message);
     res.status(502).json({ error: 'Failed to connect to model provider', detail: err.message });
@@ -204,16 +218,14 @@ function requestType(path) {
   return 'chat';
 }
 
-function recordUsage(db, userId, model, promptTokens, completionTokens, totalTokens, latencyMs, isStream, type = 'chat') {
-  // Log
-  db.prepare(`INSERT INTO usage_logs (user_id, model, prompt_tokens, completion_tokens, total_tokens, request_type, latency_ms, is_stream)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(userId, model, promptTokens, completionTokens, totalTokens, type, latencyMs, isStream ? 1 : 0);
-
-  // Deduct quota (use total_tokens)
-  if (totalTokens > 0) {
-    db.prepare('UPDATE users SET quota_remaining = MAX(0, quota_remaining - ?), updated_at = ? WHERE id = ?')
-      .run(totalTokens, Math.floor(Date.now() / 1000), userId);
-  }
+function recordUsage(db, userId, model, promptTokens, completionTokens, totalTokens, latencyMs, isStream, type = 'chat', sizes = {}) {
+  const charged = chargeQuota(db, userId, resolveChargeTokens({
+    totalTokens, promptTokens, completionTokens,
+    requestBytes: sizes.requestBytes, responseBytes: sizes.responseBytes,
+  }));
+  db.prepare(`INSERT INTO usage_logs (user_id, model, prompt_tokens, completion_tokens, total_tokens, request_type, latency_ms, is_stream, charged_tokens)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(userId, model, promptTokens, completionTokens, totalTokens, type, latencyMs, isStream ? 1 : 0, charged);
+  return charged;
 }
 
 // ─── Register proxy routes ───────────────────────────────────────

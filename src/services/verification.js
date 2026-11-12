@@ -2,9 +2,10 @@
 
 const crypto = require('crypto');
 const { getDb } = require('../db/database');
+const { getJwtSecret } = require('../config/secrets');
 
 function hashCode(email, code) {
-  return crypto.createHash('sha256').update(`${email}:${code}:${process.env.JWT_SECRET || 'dev-secret'}`).digest('hex');
+  return crypto.createHash('sha256').update(`${email}:${code}:${getJwtSecret()}`).digest('hex');
 }
 
 function consumeVerificationCode(email, code) {
