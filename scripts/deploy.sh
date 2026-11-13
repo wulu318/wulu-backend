@@ -77,12 +77,15 @@ node -e "require('better-sqlite3')(':memory:').exec('CREATE TABLE t(a)')" \
 
 # ── 5. .env ───────────────────────────────────────────────────────
 if [ ! -f "$APP_DIR/.env" ]; then
-  log "Creating .env (defaults — edit $APP_DIR/.env to customize)..."
+  log "Creating .env with freshly generated secrets (edit $APP_DIR/.env to customize)..."
+  # Never ship fixed credentials: anything committed here is public forever.
+  GEN_JWT_SECRET=$(openssl rand -hex 32)
+  GEN_ADMIN_PASSWORD=$(openssl rand -base64 24 | tr -d '=+/' | cut -c1-20)
   cat > "$APP_DIR/.env" <<EOF
 PORT=$PORT
-JWT_SECRET=wulu-superagent-jwt-secret-2026-prod
+JWT_SECRET=$GEN_JWT_SECRET
 ADMIN_EMAIL=ai@ai.005656.xyz
-ADMIN_PASSWORD=Wulu2026Admin
+ADMIN_PASSWORD=$GEN_ADMIN_PASSWORD
 NEWAPI_BASE_URL=https://api.newapi.com
 NEWAPI_API_KEY=sk-placeholder
 DATABASE_PATH=./data/wulu.db
