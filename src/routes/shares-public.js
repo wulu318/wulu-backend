@@ -5,6 +5,7 @@
 // our cookies or call authenticated APIs.
 const express = require('express');
 const fs = require('fs');
+const http = require('http');
 const path = require('path');
 
 const { getDb } = require('../db/database');
@@ -84,6 +85,32 @@ function sendFileSafe(res, filePath, share) {
   });
 }
 
+// Node services run in a capped container; forward the request to its loopback port.
+function proxyToContainer(req, res, port) {
+  const upstream = http.request({
+    host: '127.0.0.1',
+    port,
+    method: req.method,
+    path: req.originalUrl,
+    headers: { ...req.headers, host: `127.0.0.1:${port}` },
+    timeout: 30_000,
+  }, (upstreamRes) => {
+    res.status(upstreamRes.statusCode || 502);
+    for (const [key, value] of Object.entries(upstreamRes.headers)) {
+      if (value !== undefined && !['connection', 'transfer-encoding'].includes(key.toLowerCase())) {
+        res.setHeader(key, value);
+      }
+    }
+    upstreamRes.pipe(res);
+  });
+
+  upstream.on('timeout', () => { upstream.destroy(new Error('timeout')); });
+  upstream.on('error', () => {
+    if (!res.headersSent) res.status(502).type('text').send('Service is not responding');
+  });
+  req.pipe(upstream);
+}
+
 function handleShareRequest(req, res) {
   const shareId = String(req.params.shareId || '');
   const db = getDb();
@@ -105,6 +132,18 @@ function handleShareRequest(req, res) {
       res.setHeader('Set-Cookie',
         `${cookieName}=${encodeURIComponent(provided)}; Path=/s/${share.id}/; Max-Age=2592000; HttpOnly; SameSite=Lax`);
     }
+  }
+
+  if (share.source_type === 'node_service_deployment') {
+    const deployment = db.prepare(
+      "SELECT runtime_port, status FROM share_deployments WHERE share_id = ? ORDER BY created_at DESC LIMIT 1",
+    ).get(share.id);
+    if (!deployment || deployment.status !== 'live' || !deployment.runtime_port) {
+      return res.status(502).type('text').send('Service is not available yet');
+    }
+    db.prepare('UPDATE html_shares SET last_accessed_at = ? WHERE id = ?')
+      .run(Math.floor(Date.now() / 1000), share.id);
+    return proxyToContainer(req, res, deployment.runtime_port);
   }
 
   const root = storage.contentDir(share.id);

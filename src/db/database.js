@@ -314,6 +314,11 @@ async function initDb(dbPath) {
     created_at INTEGER DEFAULT 0
   )`);
 
+// Additive migration: port the optional container runtime published for a deployment.
+if (!db.prepare('PRAGMA table_info(share_deployments)').all().some(column => column.name === 'runtime_port')) {
+  db.exec('ALTER TABLE share_deployments ADD COLUMN runtime_port INTEGER DEFAULT 0');
+}
+
 // Additive migration: record what was actually charged, separate from reported usage.
 if (!db.prepare('PRAGMA table_info(usage_logs)').all().some(column => column.name === 'charged_tokens')) {
   db.exec('ALTER TABLE usage_logs ADD COLUMN charged_tokens INTEGER DEFAULT 0');

@@ -12,6 +12,7 @@ const { authMiddleware } = require('../middleware/auth');
 const { parseMultipart, MAX_FILE_BYTES } = require('../services/multipart');
 const storage = require('../services/shareStorage');
 const { toDeploymentPayload } = require('../services/shareDeploymentMapper');
+const nodeRunner = require('../services/nodeRunner');
 
 const router = express.Router();
 const asyncRoute = (handler) => (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
@@ -136,6 +137,27 @@ async function createDeployment(req, res, forcedKind) {
     recordEvent(db, deploymentId, 'created', `${kind} deployment created`);
     if (failureCode) recordEvent(db, deploymentId, 'failed', failureMessage);
 
+    // Node services only go live when a container runtime is available and healthy.
+    if (!isStatic && !failureCode) {
+      const started = await nodeRunner.startDeployment({
+        deploymentId,
+        contentDir: storage.contentDir(shareId),
+        manifest,
+      });
+      const nowTs = Math.floor(Date.now() / 1000);
+      if (started.ok) {
+        db.prepare("UPDATE share_deployments SET status = 'live', runtime_port = ?, updated_at = ? WHERE id = ?")
+          .run(started.port, nowTs, deploymentId);
+        db.prepare("UPDATE html_shares SET status = 'live' WHERE id = ?").run(shareId);
+        recordEvent(db, deploymentId, 'live', `listening on port ${started.port}`);
+      } else {
+        db.prepare("UPDATE share_deployments SET status = 'deploy_failed', failure_code = ?, failure_message = ?, updated_at = ? WHERE id = ?")
+          .run(started.code, started.message, nowTs, deploymentId);
+        db.prepare("UPDATE html_shares SET status = 'failed' WHERE id = ?").run(shareId);
+        recordEvent(db, deploymentId, 'failed', started.message);
+      }
+    }
+
     const row = db.prepare('SELECT * FROM share_deployments WHERE id = ?').get(deploymentId);
     const events = db.prepare('SELECT * FROM share_deployment_events WHERE deployment_id = ? ORDER BY id').all(deploymentId);
     const payload = toDeploymentPayload(row, events);
@@ -144,7 +166,7 @@ async function createDeployment(req, res, forcedKind) {
     payload.accessMode = accessMode;
     payload.shareCode = shareCode || undefined;
     payload.shareCodeUnavailable = accessMode !== 'code';
-    payload.status = isStatic ? 'live' : 'failed';
+    payload.status = row.status === 'deploy_failed' ? 'failed' : row.status;
     res.json({ code: 0, data: payload });
   } finally {
     await cleanup();
