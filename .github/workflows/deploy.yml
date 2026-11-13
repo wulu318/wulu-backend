@@ -1,35 +1,54 @@
-name: Deploy WULU backend
+name: Verify WULU backend
+
+# Deployment is pull-based: the production server runs a systemd timer that checks
+# GitHub main every 5 minutes and runs scripts/deploy-existing.sh when it moves.
+# Inbound SSH from GitHub runners is blocked by the host's GeoIP filter, so a
+# push-triggered SSH deploy cannot work from here. This workflow therefore verifies
+# the code instead, which is what CI can actually do reliably.
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
+  pull_request:
 
 concurrency:
-  group: wulu-backend-production
+  group: wulu-backend-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['22', '24']
     steps:
-      - name: Install SSH key
-        uses: webfactory/ssh-agent@v0.9.0
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
         with:
-          ssh-private-key: ${{ secrets.WULU_DEPLOY_SSH_KEY }}
+          node-version: ${{ matrix.node-version }}
 
-      - name: Deploy on server
-        env:
-          DEPLOY_HOST: ${{ secrets.WULU_DEPLOY_HOST }}
-          DEPLOY_PORT: ${{ secrets.WULU_DEPLOY_PORT || '22' }}
-          DEPLOY_USER: ${{ secrets.WULU_DEPLOY_USER || 'root' }}
-        run: |
-          set -euo pipefail
-          test -n "$DEPLOY_HOST"
-          ssh -p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$DEPLOY_USER@$DEPLOY_HOST" \
-            'curl -fsSL https://raw.githubusercontent.com/wulu318/wulu-backend/main/scripts/deploy-existing.sh | bash'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
+      - name: Load native sqlite module
+        run: node -e "require('better-sqlite3')(':memory:').exec('CREATE TABLE t(a)')"
+
+      - name: Run tests
+        run: npm test
+
+  production-health:
+    runs-on: ubuntu-24.04
+    needs: test
+    if: github.event_name != 'pull_request'
+    steps:
       - name: Verify public health endpoint
         env:
           HEALTH_URL: ${{ secrets.WULU_HEALTH_URL || 'https://ai.005656.xyz/api/health' }}
-        run: curl --fail --silent --show-error --retry 10 --retry-delay 3 "$HEALTH_URL"
+        run: |
+          set -euo pipefail
+          body=$(curl --fail --silent --show-error --retry 5 --retry-delay 2 "$HEALTH_URL")
+          echo "$body"
+          echo "$body" | grep -q '"status":"ok"'
