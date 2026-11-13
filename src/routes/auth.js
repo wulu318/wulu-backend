@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { getDb } = require('../db/database');
 const { authMiddleware, generateToken } = require('../middleware/auth');
 const { consumeVerificationCode } = require('../services/verification');
+const { verificationRequired, warnIfUnverifiedSignup } = require('../services/authPolicy');
 
 const router = express.Router();
 
@@ -215,8 +216,12 @@ router.post('/register', (req, res) => {
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
   if (existing) return res.status(409).json({ error: 'This email is already registered' });
 
-  if (typeof verificationCode !== 'string' || !consumeVerificationCode(cleanEmail, verificationCode)) {
-    return res.status(400).json({ error: 'A valid email verification code is required' });
+  if (verificationRequired()) {
+    if (typeof verificationCode !== 'string' || !consumeVerificationCode(cleanEmail, verificationCode)) {
+      return res.status(400).json({ error: 'A valid email verification code is required' });
+    }
+  } else {
+    warnIfUnverifiedSignup();
   }
 
   const id = uuidv4();
@@ -363,8 +368,12 @@ router.post('/portal-register', (req, res) => {
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(cleanEmail);
   if (existing) return res.status(409).json({ error: 'This email is already registered' });
 
-  if (typeof verificationCode !== 'string' || !consumeVerificationCode(cleanEmail, verificationCode)) {
-    return res.status(400).json({ error: 'A valid email verification code is required' });
+  if (verificationRequired()) {
+    if (typeof verificationCode !== 'string' || !consumeVerificationCode(cleanEmail, verificationCode)) {
+      return res.status(400).json({ error: 'A valid email verification code is required' });
+    }
+  } else {
+    warnIfUnverifiedSignup();
   }
 
   const id = uuidv4();
