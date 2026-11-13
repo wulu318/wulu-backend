@@ -247,7 +247,12 @@ async function initDb(dbPath) {
     PRIMARY KEY (user_id, campaign_code)
   )`);
 
-  // Additive migration: record what was actually charged, separate from reported usage.
+    // Point store kits at an icon that is actually served. The old /runtime path is
+  // blocked by the reverse proxy and the files were never in the repo.
+  db.prepare("UPDATE store_kits SET icon = ? WHERE icon LIKE '%/runtime/computer-use-kit.png'")
+    .run('https://ai.005656.xyz/images/kit-default-512.png');
+
+// Additive migration: record what was actually charged, separate from reported usage.
 if (!db.prepare('PRAGMA table_info(usage_logs)').all().some(column => column.name === 'charged_tokens')) {
   db.exec('ALTER TABLE usage_logs ADD COLUMN charged_tokens INTEGER DEFAULT 0');
 }
@@ -329,15 +334,15 @@ if (!db.prepare('PRAGMA table_info(usage_logs)').all().some(column => column.nam
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
     );
     const kits = [
-      ['wulu-productivity-pack', 'Productivity Pack', '效率套件', 'Essential productivity skills bundled together — document creation, spreadsheets, scheduling, and deep research.', '必备效率技能打包——文档创建、电子表格、定时任务和深度研究。', 'https://ai.005656.xyz/runtime/computer-use-kit.png', 'WULU Team', '1.0.0', '0',
+      ['wulu-productivity-pack', 'Productivity Pack', '效率套件', 'Essential productivity skills bundled together — document creation, spreadsheets, scheduling, and deep research.', '必备效率技能打包——文档创建、电子表格、定时任务和深度研究。', 'https://ai.005656.xyz/images/kit-default-512.png', 'WULU Team', '1.0.0', '0',
         '[{"en":"Create a project report in DOCX format","zh":"用 DOCX 格式创建项目报告"},{"en":"Analyze this Excel data and create a summary chart","zh":"分析这份 Excel 数据并创建汇总图表"},{"en":"Schedule a daily news briefing at 8 AM","zh":"设置每天早上8点的新闻简报定时任务"}]',
         '[{"id":"document-creator","name":{"en":"Document Creator","zh":"文档创建"},"description":{"en":"Create DOCX/PDF documents","zh":"创建 DOCX/PDF 文档"}},{"id":"spreadsheet-analyst","name":{"en":"Spreadsheet Analyst","zh":"表格分析"},"description":{"en":"Analyze and create spreadsheets","zh":"分析和创建电子表格"}},{"id":"scheduler","name":{"en":"Scheduler","zh":"定时任务"},"description":{"en":"Manage scheduled tasks","zh":"管理定时任务"}},{"id":"deep-research","name":{"en":"Deep Research","zh":"深度研究"},"description":{"en":"Multi-source research","zh":"多源研究"}}]',
         '', 'null', 'null', 0],
-      ['wulu-visual-pack', 'Visual Design Pack', '视觉设计套件', 'All visual creation tools in one kit — diagrams, infographics, presentations, and canvas art.', '所有视觉创作工具打包——图表、信息图、演示文稿和画布设计。', 'https://ai.005656.xyz/runtime/computer-use-kit.png', 'WULU Team', '1.0.0', '0',
+      ['wulu-visual-pack', 'Visual Design Pack', '视觉设计套件', 'All visual creation tools in one kit — diagrams, infographics, presentations, and canvas art.', '所有视觉创作工具打包——图表、信息图、演示文稿和画布设计。', 'https://ai.005656.xyz/images/kit-default-512.png', 'WULU Team', '1.0.0', '0',
         '[{"en":"Draw a system architecture diagram","zh":"画一个系统架构图"},{"en":"Create an infographic about AI trends","zh":"创建一个关于 AI 趋势的信息图"},{"en":"Design a presentation for product launch","zh":"设计一个产品发布的演示文稿"}]',
         '[{"id":"diagram-drawing","name":{"en":"Diagram Drawing","zh":"图表绘制"},"description":{"en":"Generate professional diagrams","zh":"生成专业图表"}},{"id":"infographic-designer","name":{"en":"Infographic Designer","zh":"信息图设计"},"description":{"en":"Design infographics","zh":"设计信息图"}},{"id":"pptx-creator","name":{"en":"PPT Creator","zh":"PPT 创建"},"description":{"en":"Create presentations","zh":"创建演示文稿"}},{"id":"canvas-design","name":{"en":"Canvas Design","zh":"画布设计"},"description":{"en":"Create visual art","zh":"创建视觉艺术"}}]',
         '', 'null', 'null', 1],
-      ['wulu-analysis-pack', 'Analysis & Research Pack', '分析研究套件', 'Professional analysis toolkit — contract review, deep research, and memory management for complex tasks.', '专业分析工具包——合同审查、深度研究和记忆管理，应对复杂任务。', 'https://ai.005656.xyz/runtime/computer-use-kit.png', 'WULU Team', '1.0.0', '0',
+      ['wulu-analysis-pack', 'Analysis & Research Pack', '分析研究套件', 'Professional analysis toolkit — contract review, deep research, and memory management for complex tasks.', '专业分析工具包——合同审查、深度研究和记忆管理，应对复杂任务。', 'https://ai.005656.xyz/images/kit-default-512.png', 'WULU Team', '1.0.0', '0',
         '[{"en":"Review this contract for potential risks","zh":"审查这份合同的潜在风险"},{"en":"Research the latest trends in quantum computing","zh":"调研量子计算的最新趋势"},{"en":"Remember that I prefer concise summaries","zh":"记住我喜欢简洁的摘要"}]',
         '[{"id":"contract-review","name":{"en":"Contract Review","zh":"合同审查"},"description":{"en":"Review contracts with risk analysis","zh":"审查合同并进行风险分析"}},{"id":"deep-research","name":{"en":"Deep Research","zh":"深度研究"},"description":{"en":"Multi-source research with citations","zh":"带引用的多源研究"}},{"id":"memory-manager","name":{"en":"Memory Manager","zh":"记忆管理"},"description":{"en":"Manage long-term memory","zh":"管理长期记忆"}},{"id":"web-search","name":{"en":"Web Search","zh":"网页搜索"},"description":{"en":"Search the web","zh":"搜索网络"}}]',
         '', 'null', 'null', 2],

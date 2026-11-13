@@ -457,4 +457,12 @@ router.post('/refresh', authMiddleware, (req, res) => {
   res.json({ token });
 });
 
+// ─── POST /api/auth/logout ─────────────────────────────────────
+// Access tokens are stateless, so the client drops them locally. This endpoint exists
+// because the desktop app calls it on sign-out, and it gives us a place to extend
+// revocation once refresh-token rotation lands.
+router.post('/logout', authMiddleware, (_req, res) => {
+  res.json({ code: 0, success: true });
+});
+
 module.exports = router;

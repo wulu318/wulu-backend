@@ -33,6 +33,7 @@ test('client contract endpoints: banners, model catalog and credit campaigns', a
   app.use('/api/client-banners', require('../src/routes/client-banners'));
   app.use('/api/models', require('../src/routes/models'));
   app.use('/api/credits-reset-campaign', require('../src/routes/credits-campaign'));
+  app.use('/api/auth', require('../src/routes/auth'));
   app.use('/api/admin', require('../src/routes/admin'));
   const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
   t.after(async () => {
@@ -124,4 +125,11 @@ test('client contract endpoints: banners, model catalog and credit campaigns', a
 
   assert.equal((await claim('does-not-exist')).status, 404);
   assert.equal((await claim('spring', '')).status, 401);
+
+  // ─── Logout (called by the desktop app on sign-out) ─────────
+  const logout = await fetch(`${base}/api/auth/logout`, {
+    method: 'POST', headers: { Authorization: `Bearer ${userToken}`, 'Content-Type': 'application/json' },
+  });
+  assert.equal(logout.status, 200);
+  assert.equal((await logout.json()).code, 0);
 });

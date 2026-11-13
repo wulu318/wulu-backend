@@ -2,3 +2,9 @@ node_modules/
 data/
 .env
 *.log
+
+# Large generated/uploaded artifacts must never enter git history.
+# A stray `git stash -u` previously moved 1.9GB of installers into .git objects.
+public/runtime/
+.deploy-backups/
+REVISION
