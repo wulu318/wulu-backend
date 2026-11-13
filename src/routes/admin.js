@@ -632,4 +632,72 @@ router.post('/upload', (req, res) => {
   }
 });
 
+// ─── Client banners (desktop sidebar) ────────────────────────────
+router.get('/client-banners', (_req, res) => {
+  const rows = getDb().prepare('SELECT * FROM client_banners ORDER BY placement, sort_order, id').all();
+  res.json({ banners: rows.map(toAdminBanner) });
+});
+
+router.post('/client-banners', (req, res) => {
+  const now = Math.floor(Date.now() / 1000);
+  const b = normalizeBanner(req.body || {});
+  const info = getDb().prepare(`INSERT INTO client_banners
+    (placement, activity_description, link_url, image_url, image_width, image_height, is_active, sort_order, starts_at, ends_at, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(b.placement, b.activityDescription, b.linkUrl, b.imageUrl, b.imageWidth, b.imageHeight, b.isActive, b.sortOrder, b.startsAt, b.endsAt, now, now);
+  res.json({ id: info.lastInsertRowid });
+});
+
+router.put('/client-banners/:id', (req, res) => {
+  const existing = getDb().prepare('SELECT * FROM client_banners WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Banner not found' });
+  const b = normalizeBanner({ ...toAdminBanner(existing), ...req.body });
+  getDb().prepare(`UPDATE client_banners SET placement=?, activity_description=?, link_url=?, image_url=?,
+    image_width=?, image_height=?, is_active=?, sort_order=?, starts_at=?, ends_at=?, updated_at=? WHERE id=?`)
+    .run(b.placement, b.activityDescription, b.linkUrl, b.imageUrl, b.imageWidth, b.imageHeight, b.isActive, b.sortOrder, b.startsAt, b.endsAt, Math.floor(Date.now() / 1000), req.params.id);
+  res.json({ ok: true });
+});
+
+router.delete('/client-banners/:id', (req, res) => {
+  const info = getDb().prepare('DELETE FROM client_banners WHERE id = ?').run(req.params.id);
+  if (info.changes === 0) return res.status(404).json({ error: 'Banner not found' });
+  res.json({ ok: true });
+});
+
+function toAdminBanner(row) {
+  return {
+    id: row.id,
+    placement: row.placement,
+    activityDescription: row.activity_description,
+    linkUrl: row.link_url,
+    imageUrl: row.image_url,
+    imageWidth: row.image_width,
+    imageHeight: row.image_height,
+    isActive: Boolean(row.is_active),
+    sortOrder: row.sort_order,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function normalizeBanner(input) {
+  const toInt = (value, fallback = 0) => {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) ? n : fallback;
+  };
+  return {
+    placement: String(input.placement || 'desktop_sidebar').slice(0, 64),
+    activityDescription: String(input.activityDescription || '').slice(0, 500),
+    linkUrl: String(input.linkUrl || '').slice(0, 1000),
+    imageUrl: String(input.imageUrl || '').slice(0, 1000),
+    imageWidth: toInt(input.imageWidth),
+    imageHeight: toInt(input.imageHeight),
+    isActive: input.isActive === false || input.isActive === 0 ? 0 : 1,
+    sortOrder: toInt(input.sortOrder),
+    startsAt: toInt(input.startsAt),
+    endsAt: toInt(input.endsAt),
+  };
+}
+
 module.exports = router;

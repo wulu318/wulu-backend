@@ -24,6 +24,9 @@ const analyticsRoutes = require('./routes/analytics');
 const clientConfigRoutes = require('./routes/client-config');
 const verificationRoutes = require('./routes/verification');
 const mediaRoutes = require('./routes/media');
+const clientBannerRoutes = require('./routes/client-banners');
+const modelRoutes = require('./routes/models');
+const creditsCampaignRoutes = require('./routes/credits-campaign');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -86,6 +89,9 @@ app.use('/api/mcp-store', mcpStoreRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/config', clientConfigRoutes);
 app.use('/api/community', require('./routes/community'));
+app.use('/api/client-banners', clientBannerRoutes);
+app.use('/api/models', modelRoutes);
+app.use('/api/credits-reset-campaign', creditsCampaignRoutes);
 
 // ─── Error Handler ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {

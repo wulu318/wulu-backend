@@ -221,6 +221,32 @@ async function initDb(dbPath) {
     updated_at INTEGER DEFAULT 0
   )`);
 
+  // ─── Client banners shown inside the desktop app sidebar ────────
+  db.exec(`CREATE TABLE IF NOT EXISTS client_banners (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    placement TEXT NOT NULL DEFAULT 'desktop_sidebar',
+    activity_description TEXT NOT NULL DEFAULT '',
+    link_url TEXT NOT NULL DEFAULT '',
+    image_url TEXT NOT NULL DEFAULT '',
+    image_width INTEGER DEFAULT 0,
+    image_height INTEGER DEFAULT 0,
+    is_active INTEGER DEFAULT 1,
+    sort_order INTEGER DEFAULT 0,
+    starts_at INTEGER DEFAULT 0,
+    ends_at INTEGER DEFAULT 0,
+    created_at INTEGER DEFAULT 0,
+    updated_at INTEGER DEFAULT 0
+  )`);
+
+  // ─── One row per user per credit campaign: makes claims idempotent ──
+  db.exec(`CREATE TABLE IF NOT EXISTS credit_claims (
+    user_id TEXT NOT NULL REFERENCES users(id),
+    campaign_code TEXT NOT NULL,
+    credits INTEGER NOT NULL DEFAULT 0,
+    claimed_at INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, campaign_code)
+  )`);
+
   // Additive migration: record what was actually charged, separate from reported usage.
 if (!db.prepare('PRAGMA table_info(usage_logs)').all().some(column => column.name === 'charged_tokens')) {
   db.exec('ALTER TABLE usage_logs ADD COLUMN charged_tokens INTEGER DEFAULT 0');
@@ -238,6 +264,7 @@ if (!db.prepare('PRAGMA table_info(usage_logs)').all().some(column => column.nam
   db.exec(`CREATE INDEX IF NOT EXISTS idx_memory_user ON memory_entries(user_id)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, date)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_future_user ON future_messages(user_id, is_delivered)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_banner_placement ON client_banners(placement, is_active)`);
 
   // ─── Seed admin user ───────────────────────────────────────────
   const adminEmail = process.env.ADMIN_EMAIL || 'ai@ai.005656.xyz';
