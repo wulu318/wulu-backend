@@ -252,6 +252,68 @@ async function initDb(dbPath) {
   db.prepare("UPDATE store_kits SET icon = ? WHERE icon LIKE '%/runtime/computer-use-kit.png'")
     .run('https://ai.005656.xyz/images/kit-default-512.png');
 
+  // ─── Artifact shares served at /s/<shareId>/ ───────────────────
+  db.exec(`CREATE TABLE IF NOT EXISTS html_shares (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id),
+    source_type TEXT NOT NULL DEFAULT 'html_file',
+    client_source_key TEXT DEFAULT '',
+    session_id TEXT DEFAULT '',
+    artifact_id TEXT DEFAULT '',
+    title TEXT NOT NULL DEFAULT '',
+    entry_file TEXT NOT NULL DEFAULT 'index.html',
+    access_mode TEXT NOT NULL DEFAULT 'code',
+    share_code TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'live',
+    moderation_status TEXT NOT NULL DEFAULT 'approved',
+    disabled_at INTEGER,
+    disabled_reason TEXT,
+    disabled_source TEXT,
+    source_sha256 TEXT DEFAULT '',
+    archive_bytes INTEGER DEFAULT 0,
+    content_version INTEGER DEFAULT 1,
+    content_updated_at INTEGER,
+    created_at INTEGER DEFAULT 0,
+    updated_at INTEGER DEFAULT 0,
+    last_accessed_at INTEGER
+  )`);
+
+  db.exec(`CREATE TABLE IF NOT EXISTS share_deployments (
+    id TEXT PRIMARY KEY,
+    share_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    deployment_kind TEXT NOT NULL DEFAULT 'node_service',
+    runtime_language TEXT DEFAULT 'node',
+    runtime_version TEXT DEFAULT '',
+    package_manager TEXT DEFAULT '',
+    install_command TEXT DEFAULT '',
+    build_command TEXT DEFAULT '',
+    start_command TEXT DEFAULT '',
+    listen_port INTEGER DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'queued',
+    failure_code TEXT,
+    failure_message TEXT,
+    provider TEXT DEFAULT '',
+    region TEXT DEFAULT '',
+    provider_resource_id TEXT DEFAULT '',
+    runtime_url_masked TEXT DEFAULT '',
+    persistence_json TEXT DEFAULT 'null',
+    expires_at INTEGER,
+    source_sha256 TEXT DEFAULT '',
+    source_archive_bytes INTEGER DEFAULT 0,
+    manifest_json TEXT DEFAULT '{}',
+    created_at INTEGER DEFAULT 0,
+    updated_at INTEGER DEFAULT 0
+  )`);
+
+  db.exec(`CREATE TABLE IF NOT EXISTS share_deployment_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    deployment_id TEXT NOT NULL,
+    type TEXT NOT NULL,
+    message TEXT DEFAULT '',
+    created_at INTEGER DEFAULT 0
+  )`);
+
 // Additive migration: record what was actually charged, separate from reported usage.
 if (!db.prepare('PRAGMA table_info(usage_logs)').all().some(column => column.name === 'charged_tokens')) {
   db.exec('ALTER TABLE usage_logs ADD COLUMN charged_tokens INTEGER DEFAULT 0');
@@ -270,6 +332,10 @@ if (!db.prepare('PRAGMA table_info(usage_logs)').all().some(column => column.nam
   db.exec(`CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, date)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_future_user ON future_messages(user_id, is_delivered)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_banner_placement ON client_banners(placement, is_active)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_shares_user ON html_shares(user_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_shares_source ON html_shares(user_id, source_type, client_source_key)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_deployments_share ON share_deployments(share_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_deployment_events ON share_deployment_events(deployment_id)`);
 
   // ─── Seed admin user ───────────────────────────────────────────
   const adminEmail = process.env.ADMIN_EMAIL || 'ai@ai.005656.xyz';

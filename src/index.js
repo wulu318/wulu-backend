@@ -27,6 +27,9 @@ const mediaRoutes = require('./routes/media');
 const clientBannerRoutes = require('./routes/client-banners');
 const modelRoutes = require('./routes/models');
 const creditsCampaignRoutes = require('./routes/credits-campaign');
+const htmlShareRoutes = require('./routes/html-shares');
+const shareDeploymentRoutes = require('./routes/share-deployments');
+const sharesPublicRoutes = require('./routes/shares-public');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -92,6 +95,9 @@ app.use('/api/community', require('./routes/community'));
 app.use('/api/client-banners', clientBannerRoutes);
 app.use('/api/models', modelRoutes);
 app.use('/api/credits-reset-campaign', creditsCampaignRoutes);
+app.use('/api/html-shares', htmlShareRoutes);
+app.use('/api/share-deployments', shareDeploymentRoutes);
+app.use('/s', sharesPublicRoutes);
 
 // ─── Error Handler ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
