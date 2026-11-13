@@ -4,6 +4,7 @@ const express = require('express');
 const { URL } = require('url');
 const { getDb } = require('../db/database');
 const { authMiddleware } = require('../middleware/auth');
+const { costFor, chargeMediaAction } = require('../services/mediaBilling');
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -62,7 +63,7 @@ router.get('/status', asyncRoute((_req, res) => {
   });
 }));
 
-const proxyMedia = async (req, res) => {
+const proxyMedia = async (req, res, action = null) => {
   const { baseUrl, apiKey } = mediaConfig();
   if (!baseUrl) {
     return res.status(503).json({ code: 50301, message: 'Media service is not configured. Set MEDIA_SERVICE_BASE_URL in backend system config.' });
@@ -78,6 +79,17 @@ const proxyMedia = async (req, res) => {
     return res.status(503).json({ code: 50303, message: 'MEDIA_SERVICE_BASE_URL must be a valid HTTPS URL.' });
   }
   try {
+    if (action) {
+      const db = getDb();
+      const user = db.prepare('SELECT quota_remaining FROM users WHERE id = ?').get(req.user.sub);
+      const cost = costFor(action);
+      if (!user) return res.status(403).json({ code: 40301, message: 'Account inactive' });
+      // Refuse up front instead of doing work the user cannot pay for.
+      if ((user.quota_remaining || 0) < cost) {
+        return res.status(429).json({ code: 40204, message: 'Not enough points for this request' });
+      }
+    }
+
     const headers = { Accept: 'application/json' };
     if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
     if (req.method !== 'GET') headers['Content-Type'] = 'application/json';
@@ -88,6 +100,16 @@ const proxyMedia = async (req, res) => {
       signal: AbortSignal.timeout(120_000),
     });
     const body = await response.text();
+
+    // Charge only after the upstream accepted the work.
+    if (response.ok && action) {
+      try {
+        chargeMediaAction(getDb(), req.user.sub, action);
+      } catch (chargeError) {
+        console.error('[Media] Failed to charge quota:', chargeError.message);
+      }
+    }
+
     res.status(response.status);
     res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json; charset=utf-8');
     return res.send(body);
@@ -96,13 +118,13 @@ const proxyMedia = async (req, res) => {
   }
 };
 
-router.get('/images/models', asyncRoute(proxyMedia));
-router.get('/videos/models', asyncRoute(proxyMedia));
-router.post('/images/generate', asyncRoute(proxyMedia));
-router.post('/videos/generate', asyncRoute(proxyMedia));
-router.get('/images/tasks/:taskId', asyncRoute(proxyMedia));
-router.get('/videos/tasks/:taskId', asyncRoute(proxyMedia));
-router.post('/videos/tasks/:taskId/cancel', asyncRoute(proxyMedia));
+router.get('/images/models', asyncRoute((req, res) => proxyMedia(req, res)));
+router.get('/videos/models', asyncRoute((req, res) => proxyMedia(req, res)));
+router.post('/images/generate', asyncRoute((req, res) => proxyMedia(req, res, 'image_generation')));
+router.post('/videos/generate', asyncRoute((req, res) => proxyMedia(req, res, 'video_generation')));
+router.get('/images/tasks/:taskId', asyncRoute((req, res) => proxyMedia(req, res)));
+router.get('/videos/tasks/:taskId', asyncRoute((req, res) => proxyMedia(req, res)));
+router.post('/videos/tasks/:taskId/cancel', asyncRoute((req, res) => proxyMedia(req, res)));
 
 router.post('/realtime/sessions', asyncRoute(async (req, res) => {
   const { sessionUrl, apiKey } = asrConfig();
