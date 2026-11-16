@@ -29,6 +29,9 @@ test('download catalog reports only platforms that actually have a package', asy
       'https://example.com/WULU-darwin-arm64.dmg', 334025798,
     );
 
+  db.prepare("UPDATE update_versions SET windows_arm64_url = ?, windows_arm64_size = ? WHERE is_latest = 1")
+    .run('https://example.com/WULU-Setup-arm64.exe', 265341406);
+
   const app = express();
   app.use('/api/download', require('../src/routes/download'));
   const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
@@ -47,6 +50,8 @@ test('download catalog reports only platforms that actually have a package', asy
   const { platforms, contact } = body.data;
   assert.equal(platforms.windowsX64.available, true);
   assert.equal(platforms.windowsX64.size, 262503108);
+  assert.equal(platforms.windowsArm64.available, true);
+  assert.equal(platforms.windowsArm64.size, 265341406);
   assert.equal(platforms.macArm.available, true);
   assert.equal(platforms.macIntel.available, false, 'no Intel mac package exists');
   assert.equal(platforms.macIntel.url, null);

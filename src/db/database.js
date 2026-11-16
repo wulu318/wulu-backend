@@ -314,6 +314,14 @@ async function initDb(dbPath) {
     created_at INTEGER DEFAULT 0
   )`);
 
+// Additive migration: Windows on ARM installers are published now that the client
+// builds them, so the catalog needs a place to record them.
+if (!db.prepare('PRAGMA table_info(update_versions)').all().some(column => column.name === 'windows_arm64_url')) {
+  db.exec("ALTER TABLE update_versions ADD COLUMN windows_arm64_url TEXT DEFAULT ''");
+  db.exec("ALTER TABLE update_versions ADD COLUMN windows_arm64_size TEXT DEFAULT ''");
+  db.exec("ALTER TABLE update_versions ADD COLUMN windows_arm64_sha256 TEXT DEFAULT ''");
+}
+
 // Additive migration: port the optional container runtime published for a deployment.
 if (!db.prepare('PRAGMA table_info(share_deployments)').all().some(column => column.name === 'runtime_port')) {
   db.exec('ALTER TABLE share_deployments ADD COLUMN runtime_port INTEGER DEFAULT 0');

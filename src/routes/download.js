@@ -50,6 +50,7 @@ router.get('/latest', (_req, res) => {
       date: row.date || null,
       platforms: {
         windowsX64: platform(row.windows_x64_url, row.windows_x64_size, 'Windows 10/11 64-bit'),
+        windowsArm64: platform(row.windows_arm64_url, row.windows_arm64_size, 'Windows on ARM'),
         macArm: platform(row.mac_arm_url, row.mac_arm_size, 'Apple Silicon (M1/M2/M3/M4)'),
         macIntel: platform(row.mac_intel_url, row.mac_intel_size, 'Intel Mac'),
         linuxX64: platform(row.linux_x64_url, row.linux_x64_size, 'Linux x64'),

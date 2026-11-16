@@ -69,6 +69,13 @@ function buildValue(row, currentVersion, platform, arch) {
       sha256: row.windows_x64_sha256 || undefined,
     };
   }
+  if (row.windows_arm64_url) {
+    value.windowsArm64 = {
+      url: row.windows_arm64_url,
+      size: row.windows_arm64_size ? Number(row.windows_arm64_size) : undefined,
+      sha256: row.windows_arm64_sha256 || undefined,
+    };
+  }
   if (row.mac_arm_url) {
     value.macArm = {
       url: row.mac_arm_url,
