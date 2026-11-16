@@ -30,6 +30,7 @@ const creditsCampaignRoutes = require('./routes/credits-campaign');
 const htmlShareRoutes = require('./routes/html-shares');
 const shareDeploymentRoutes = require('./routes/share-deployments');
 const sharesPublicRoutes = require('./routes/shares-public');
+const downloadRoutes = require('./routes/download');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -98,6 +99,7 @@ app.use('/api/credits-reset-campaign', creditsCampaignRoutes);
 app.use('/api/html-shares', htmlShareRoutes);
 app.use('/api/share-deployments', shareDeploymentRoutes);
 app.use('/s', sharesPublicRoutes);
+app.use('/api/download', downloadRoutes);
 
 // ─── Error Handler ──────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
