@@ -3,6 +3,9 @@ data/
 .env
 *.log
 
+# Local scratch space: deployment keys, probe scripts, one-off patches.
+.cowork-temp/
+
 # Large generated/uploaded artifacts must never enter git history.
 # A stray `git stash -u` previously moved 1.9GB of installers into .git objects.
 public/runtime/
